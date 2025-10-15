@@ -1,0 +1,77 @@
+"""
+Script: extraer_codigo_proyecto.py
+Descripción:
+  Recorre recursivamente una carpeta de proyecto (Java Spring o Angular)
+  y genera un archivo de texto con todo el código fuente relevante concatenado.
+  Permite seleccionar automáticamente entre dos rutas comentadas.
+
+Autor: (Tu nombre)
+Versión: 2.1
+"""
+
+import os
+
+# ==== CONFIGURACIÓN ====
+
+BASE_PATH = r"C:\Users\peric\Documents\portfolio"
+
+# Rutas disponibles según tu comentario
+RUTAS = {
+    "1": r"angular-workspace\redsocial2026client",
+    "2": r"spring-workspace\redsocial2026"
+}
+
+# Archivo de salida
+ARCHIVO_SALIDA = "codigo_extraido.txt"
+
+# Extensiones de archivos relevantes
+EXTENSIONES_PERMITIDAS = {
+    ".java", ".xml", ".properties", ".yml", ".yaml",  # Spring Boot
+    ".html", ".ts", ".css"                               # Angular
+}
+
+# Carpetas a excluir
+CARPETAS_EXCLUIDAS = {
+    "node_modules", "dist", "build", "target", ".git", ".idea", ".vscode", "__pycache__"
+}
+
+# ==== LÓGICA ====
+
+def extraer_codigo(base_dir: str, salida: str):
+    with open(salida, "w", encoding="utf-8") as out:
+        for root, dirs, files in os.walk(base_dir):
+            dirs[:] = [d for d in dirs if d not in CARPETAS_EXCLUIDAS]
+            for file in files:
+                _, ext = os.path.splitext(file)
+                if ext.lower() in EXTENSIONES_PERMITIDAS:
+                    ruta_completa = os.path.join(root, file)
+                    try:
+                        with open(ruta_completa, "r", encoding="utf-8") as f:
+                            contenido = f.read()
+                        out.write(f"\n\n# ===== Archivo: {ruta_completa} =====\n\n")
+                        out.write(contenido)
+                    except Exception as e:
+                        print(f"[⚠️] No se pudo leer {ruta_completa}: {e}")
+    print(f"\n✅ Código extraído correctamente en: {os.path.abspath(salida)}")
+
+# ==== MENÚ AUTOMÁTICO ====
+
+def seleccionar_proyecto():
+    print("Selecciona el proyecto a extraer automáticamente:")
+    print("1: redsocial2026client (Angular)")
+    print("2: redsocial2026 (Spring)")
+    eleccion = ""
+    while eleccion not in RUTAS:
+        eleccion = input("Ingresa 1 o 2: ").strip()
+    ruta_completa = os.path.join(BASE_PATH, RUTAS[eleccion])
+    print(f"\n📂 Proyecto seleccionado: {ruta_completa}\n")
+    return ruta_completa
+
+# ==== EJECUCIÓN ====
+
+if __name__ == "__main__":
+    ruta_proyecto = seleccionar_proyecto()
+    if not os.path.exists(ruta_proyecto):
+        print(f"❌ La ruta especificada no existe: {ruta_proyecto}")
+    else:
+        extraer_codigo(ruta_proyecto, ARCHIVO_SALIDA)

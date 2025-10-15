@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Visualizador de píxeles (escala real)</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;font-size:15px}
+    body{margin:20px;color:#111}
+    label{display:block;margin-top:8px}
+    input[type=number]{width:120px;padding:6px;margin-right:8px}
+    button{padding:8px 10px;margin-left:6px}
+    #previewWrap{margin-top:18px;border:1px dashed #bbb;padding:16px;min-height:220px;display:flex;align-items:center;justify-content:center}
+    #rect{background:linear-gradient(135deg,rgba(0,130,255,0.08),rgba(0,130,255,0.18));border:2px solid rgba(0,130,255,0.35);box-shadow:0 6px 18px rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center}
+    #info{margin-top:12px;color:#444;font-size:13px}
+    #calArea{margin-top:12px;padding:10px;border-radius:8px;background:#f8f9fb}
+    #calBar{height:28px;background:#ddd;border-radius:6px;cursor:ew-resize;display:inline-block}
+    .small{font-size:13px;color:#666}
+  </style>
+</head>
+<body>
+  <h2>Visualizador de píxeles — <span class="small">escala real</span></h2>
+  <p class="small">Introduce ancho y alto en <strong>píxeles</strong> y verás un rectángulo con ese tamaño en pantalla (1 píxel del valor → 1 píxel del dispositivo). Para obtener una representación física precisa, usa la calibración con una tarjeta de crédito.</p>
+
+  <div>
+    <label>Ancho (píxeles): <input id="w" type="number" value="1920" min="1" /></label>
+    <label>Alto (píxeles): <input id="h" type="number" value="1080" min="1" /></label>
+    <button id="update">Mostrar</button>
+    <button id="fit">Ajustar a área</button>
+  </div>
+
+  <div id="calArea">
+    <strong>Calibración (recomendada)</strong>
+    <p class="small">Coloca una tarjeta de crédito (ancho estándar 85.60 mm) en la pantalla y ajusta la barra hasta que coincida con la tarjeta. Esto corrige el zoom del navegador y la densidad real de tu pantalla.</p>
+    <div style="display:flex;gap:12px;align-items:center">
+      <div id="calBar" style="width:220px"></div>
+      <div>
+        <div class="small">Anchura calibrada: <span id="calPx">220</span> px</div>
+        <div class="small">devicePixelRatio: <span id="dpr">1</span></div>
+        <div class="small">Corrección aplicada: <span id="corr">1.00</span></div>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <button id="resetCal">Restablecer calibración</button>
+    </div>
+  </div>
+
+  <div id="previewWrap">
+    <div id="rect">Preview</div>
+  </div>
+
+  <div id="info"></div>
+
+  <!-- elemento para medir mm en CSS -->
+  <div id="mmTest" style="position:absolute;left:-9999px;top:-9999px;width:85.6mm;height:10px"></div>
+
+  <script>
+    const wInput = document.getElementById('w');
+    const hInput = document.getElementById('h');
+    const updateBtn = document.getElementById('update');
+    const fitBtn = document.getElementById('fit');
+    const rect = document.getElementById('rect');
+    const dprSpan = document.getElementById('dpr');
+    const calBar = document.getElementById('calBar');
+    const calPxSpan = document.getElementById('calPx');
+    const corrSpan = document.getElementById('corr');
+    const resetCal = document.getElementById('resetCal');
+    const mmTest = document.getElementById('mmTest');
+    const info = document.getElementById('info');
+
+    let devicePixelRatioValue = window.devicePixelRatio || 1;
+    let calibrationPx = calBar.getBoundingClientRect().width; // CSS pixels chosen by the user
+    let cssPxFor85_6mm = mmTest.getBoundingClientRect().width; // browser's CSS px count for 85.6mm
+    let correction = 1; // factor to correct CSS output (default 1)
+
+    dprSpan.textContent = devicePixelRatioValue.toFixed(2);
+    calPxSpan.textContent = Math.round(calibrationPx);
+    corrSpan.textContent = correction.toFixed(3);
+
+    function render() {
+      const inputW = Math.max(1, parseInt(wInput.value) || 1);
+      const inputH = Math.max(1, parseInt(hInput.value) || 1);
+
+      // CSS pixels we set = (device pixels) / devicePixelRatio * correction
+      const cssW = Math.max(1, Math.round((inputW / devicePixelRatioValue) * correction));
+      const cssH = Math.max(1, Math.round((inputH / devicePixelRatioValue) * correction));
+
+      rect.style.width = cssW + 'px';
+      rect.style.height = cssH + 'px';
+      rect.textContent = inputW + ' × ' + inputH + ' px';
+
+      // Show info: estimated physical size (mm) using current calibration
+      const cssPxPerMm = calibrationPx / 85.6; // measured CSS px that equal 85.6 mm
+      const devicePixelsPerMm = devicePixelRatioValue * cssPxPerMm;
+      const physWmm = (inputW / devicePixelsPerMm).toFixed(2);
+      const physHmm = (inputH / devicePixelsPerMm).toFixed(2);
+
+      info.innerHTML = `
+        <div class="small">CSS usados: ${cssW} × ${cssH} px — DPR: ${devicePixelRatioValue}</div>
+        <div class="small">Tamaño físico estimado: ${physWmm} mm × ${physHmm} mm</div>
+        <div class="small">(Si no calibras, la precisión puede variar según el zoom y la pantalla)</div>
+      `;
+    }
+
+    // Allow dragging horizontally to resize calibration bar
+    let dragging = false;
+    calBar.addEventListener('mousedown', (e)=>{ dragging=true; e.preventDefault(); })
+    window.addEventListener('mousemove', (e)=>{
+      if(!dragging) return;
+      const rectWrap = calBar.parentElement.getBoundingClientRect();
+      let newW = Math.max(20, e.clientX - rectWrap.left - 6); // keep min
+      calBar.style.width = newW + 'px';
+      calibrationPx = newW;
+      calPxSpan.textContent = Math.round(calibrationPx);
+      // recalc correction comparing with CSS mm unit
+      cssPxFor85_6mm = mmTest.getBoundingClientRect().width;
+      correction = calibrationPx / cssPxFor85_6mm;
+      corrSpan.textContent = correction.toFixed(3);
+      render();
+    })
+    window.addEventListener('mouseup', ()=>{ dragging=false; })
+
+    // touch support
+    calBar.addEventListener('touchstart',(e)=>{ dragging=true; e.preventDefault(); })
+    window.addEventListener('touchmove',(e)=>{
+      if(!dragging) return;
+      const touch = e.touches[0];
+      const rectWrap = calBar.parentElement.getBoundingClientRect();
+      let newW = Math.max(20, touch.clientX - rectWrap.left - 6);
+      calBar.style.width = newW + 'px';
+      calibrationPx = newW;
+      calPxSpan.textContent = Math.round(calibrationPx);
+      cssPxFor85_6mm = mmTest.getBoundingClientRect().width;
+      correction = calibrationPx / cssPxFor85_6mm;
+      corrSpan.textContent = correction.toFixed(3);
+      render();
+    })
+    window.addEventListener('touchend',()=>{ dragging=false; })
+
+    updateBtn.addEventListener('click', ()=>{ render(); })
+
+    fitBtn.addEventListener('click', ()=>{
+      // Scale down to fit preview area while keeping DPR & correction for visual
+      const wrap = document.getElementById('previewWrap').getBoundingClientRect();
+      const inputW = Math.max(1, parseInt(wInput.value) || 1);
+      const inputH = Math.max(1, parseInt(hInput.value) || 1);
+      const cssW = (inputW / devicePixelRatioValue) * correction;
+      const cssH = (inputH / devicePixelRatioValue) * correction;
+      const scale = Math.min((wrap.width - 40) / cssW, (wrap.height - 40) / cssH, 1);
+      rect.style.transform = `scale(${scale})`;
+      rect.style.transformOrigin = 'center';
+      rect.style.width = Math.max(1, Math.round(cssW)) + 'px';
+      rect.style.height = Math.max(1, Math.round(cssH)) + 'px';
+      rect.textContent = inputW + ' × ' + inputH + ' px';
+      // show info
+      info.innerHTML = `<div class="small">Vista ajustada con escala ${scale.toFixed(3)} (no cambia la calibración)</div>`;
+    })
+
+    resetCal.addEventListener('click', ()=>{
+      // reset to initial
+      calibrationPx = 220;
+      calBar.style.width = calibrationPx + 'px';
+      cssPxFor85_6mm = mmTest.getBoundingClientRect().width;
+      correction = 1;
+      calPxSpan.textContent = Math.round(calibrationPx);
+      corrSpan.textContent = correction.toFixed(3);
+      render();
+    })
+
+    // initial render
+    (function init(){
+      calibrationPx = calBar.getBoundingClientRect().width;
+      cssPxFor85_6mm = mmTest.getBoundingClientRect().width;
+      correction = calibrationPx / cssPxFor85_6mm;
+      calPxSpan.textContent = Math.round(calibrationPx);
+      corrSpan.textContent = correction.toFixed(3);
+      render();
+    })();
+
+    // update dpr on zoom / display change
+    window.matchMedia(`(resolution: ${devicePixelRatioValue}dppx)`).addEventListener('change', ()=>{
+      devicePixelRatioValue = window.devicePixelRatio || 1;
+      dprSpan.textContent = devicePixelRatioValue.toFixed(2);
+      cssPxFor85_6mm = mmTest.getBoundingClientRect().width;
+      correction = calibrationPx / cssPxFor85_6mm;
+      corrSpan.textContent = correction.toFixed(3);
+      render();
+    });
+
+    // also respond to resize
+    window.addEventListener('resize', ()=>{
+      cssPxFor85_6mm = mmTest.getBoundingClientRect().width;
+      correction = calibrationPx / cssPxFor85_6mm;
+      corrSpan.textContent = correction.toFixed(3);
+      render();
+    });
+  </script>
+</body>
+</html>
