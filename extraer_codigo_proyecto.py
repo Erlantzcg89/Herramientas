@@ -10,6 +10,8 @@ Versión: 2.1
 """
 
 import os
+import subprocess
+import sys
 
 # ==== CONFIGURACIÓN ====
 
@@ -27,7 +29,7 @@ ARCHIVO_SALIDA = "codigo_extraido.txt"
 # Extensiones de archivos relevantes
 EXTENSIONES_PERMITIDAS = {
     ".java", ".xml", ".properties", ".yml", ".yaml",  # Spring Boot
-    ".html", ".ts", ".css"                               # Angular
+    ".html", ".ts", ".css"                            # Angular
 }
 
 # Carpetas a excluir
@@ -54,6 +56,18 @@ def extraer_codigo(base_dir: str, salida: str):
                         print(f"[⚠️] No se pudo leer {ruta_completa}: {e}")
     print(f"\n✅ Código extraído correctamente en: {os.path.abspath(salida)}")
 
+def abrir_archivo(ruta_archivo: str):
+    """Abre el archivo de salida con el programa predeterminado del sistema."""
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(ruta_archivo)
+        elif sys.platform == "darwin":
+            subprocess.run(["open", ruta_archivo])
+        else:
+            subprocess.run(["xdg-open", ruta_archivo])
+    except Exception as e:
+        print(f"[⚠️] No se pudo abrir el archivo automáticamente: {e}")
+
 # ==== MENÚ AUTOMÁTICO ====
 
 def seleccionar_proyecto():
@@ -75,3 +89,4 @@ if __name__ == "__main__":
         print(f"❌ La ruta especificada no existe: {ruta_proyecto}")
     else:
         extraer_codigo(ruta_proyecto, ARCHIVO_SALIDA)
+        abrir_archivo(ARCHIVO_SALIDA)
