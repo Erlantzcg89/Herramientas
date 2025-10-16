@@ -5,30 +5,34 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TO-DO App - Persistente (TO-DO / DOING / DONE)</title>
   <style>
-    :root{--bg:#0f172a;--card:#0b1220;--accent:#60a5fa;--muted:#94a3b8;--glass: rgba(255,255,255,0.03)}
-    *{box-sizing:border-box}
-    body{font-family:Inter, system-ui, -apple-system, Roboto, 'Segoe UI', Arial; margin:0; min-height:100vh; background:linear-gradient(180deg,#071029 0%, #07192f 100%); color:#e6eef8; padding:28px}
-    .app{max-width:1100px; margin:0 auto}
-    header{display:flex;gap:12px;align-items:center;margin-bottom:18px}
-    h1{font-size:20px;margin:0}
-    .input-row{display:flex;gap:8px;flex:1}
-    input[type=text]{flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:var(--card);color:inherit}
-    button.primary{padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#07203b;font-weight:600;cursor:pointer}
-    .board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-    .column{background:var(--glass);padding:12px;border-radius:12px;min-height:320px;display:flex;flex-direction:column}
-    .col-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-    .col-title{font-weight:700}
-    .count{font-size:13px;color:var(--muted)}
-    ul.tasks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
-    li.task{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:10px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.03)}
-    .task .title{flex:1;padding-right:8px}
-    .btns{display:flex;gap:6px}
-    .icon-btn{border:none;padding:6px;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
-    .icon-btn:hover{color:#fff;background:rgba(255,255,255,0.03)}
-    .small{font-size:13px;color:var(--muted)}
-    footer{margin-top:12px;color:var(--muted);font-size:13px}
-    @media (max-width:800px){.board{grid-template-columns:1fr;}}
-  </style>
+:root {--bg:#f5f5f5;--card:#e0e0e0;--accent:#b3b3b3;--muted:#888888;--glass:rgba(200,200,200,0.2);}
+* {box-sizing:border-box;}
+body {font-family:Inter,system-ui,-apple-system,Roboto,'Segoe UI',Arial;margin:0;min-height:100vh;background:linear-gradient(180deg,#ffffff 0%,#f0f0f0 100%);color:#000;padding:28px;}
+.app {max-width:1100px;margin:0 auto;}
+header {display:flex;gap:12px;align-items:center;margin-bottom:18px;}
+h1 {font-size:20px;margin:0;}
+.input-row {display:flex;gap:8px;flex:1;}
+input[type=text] {flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);background:var(--card);color:inherit;}
+button.primary {padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#000;font-weight:600;cursor:pointer;transition:background 0.2s;}
+button.primary:hover {background:#999;}
+.board {display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.column {background:var(--glass);padding:12px;border-radius:12px;min-height:320px;display:flex;flex-direction:column;}
+.col-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.col-title {font-weight:700;}
+.count {font-size:13px;color:var(--muted);}
+ul.tasks {list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;}
+li.task {padding:10px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(0,0,0,0.1);transition:background 0.3s,color 0.3s;font-weight:500;color:#000;background:#fff;}
+.task .title {flex:1;padding-right:8px;}
+li.task:hover {filter:brightness(1.05);}
+.btns {display:flex;gap:6px;align-items:center;}
+.icon-btn {border:none;padding:6px;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;transition:background 0.2s,color 0.2s;}
+.icon-btn:hover {color:#000;background:rgba(0,0,0,0.05);}
+.priority-select {background:transparent;border:1px solid rgba(0,0,0,0.2);border-radius:6px;color:inherit;padding:2px 4px;cursor:pointer;}
+.small {font-size:13px;color:var(--muted);}
+footer {margin-top:12px;color:var(--muted);font-size:13px;}
+@media(max-width:800px) {.board {grid-template-columns:1fr;}}
+</style>
+
 </head>
 <body>
   <div class="app" role="application" aria-label="Aplicación To-Do persistente">
@@ -66,18 +70,14 @@
     </main>
 
     <footer>
-      <div>Haz clic en las flechas para mover tareas entre columnas. Pulsa ✖ para eliminar.</div>
+      <div>Haz clic en las flechas para mover tareas entre columnas. Pulsa ✖ para eliminar. Cambia la prioridad con el menú desplegable.</div>
     </footer>
   </div>
 
   <script>
-    // Persistencia
-    const STORAGE_KEY = 'kanban_tasks_v1';
-
-    // Estado en memoria
+    const STORAGE_KEY = 'kanban_tasks_v3';
     let tasks = [];
 
-    // DOM
     const input = document.getElementById('taskInput');
     const addBtn = document.getElementById('addBtn');
     const todoList = document.getElementById('todoList');
@@ -88,71 +88,80 @@
     const doneCount = document.getElementById('doneCount');
     const totalCount = document.getElementById('totalCount');
 
-    // Carga inicial
     function loadFromStorage(){
       try{
         const raw = localStorage.getItem(STORAGE_KEY);
-        if(raw){ tasks = JSON.parse(raw); }
-        else{ tasks = []; }
+        tasks = raw ? JSON.parse(raw) : [];
       }catch(e){ console.error('Error leyendo almacenamiento:', e); tasks = []; }
     }
 
     function saveToStorage(){
-      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
-      catch(e){ console.error('Error guardando:', e); }
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }catch(e){ console.error('Error guardando:', e); }
     }
 
-    // Util
     function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+    function getPriorityColor(priority){
+      switch(priority){
+        case 'alta': return '#f87171';
+        case 'media': return '#facc15';
+        case 'baja': return '#4ade80';
+        default: return '#4ade80';
+      }
+    }
+
+    function createPrioritySelect(task){
+      const select = document.createElement('select');
+      select.className = 'priority-select';
+      ['baja','media','alta'].forEach(p=>{
+        const opt = document.createElement('option');
+        opt.value = p; opt.textContent = p.charAt(0).toUpperCase() + p.slice(1);
+        if(task.priority === p) opt.selected = true;
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', ()=>{
+        task.priority = select.value;
+        saveToStorage(); render();
+      });
+      return select;
+    }
 
     function createTaskElement(task){
       const li = document.createElement('li');
       li.className = 'task';
       li.dataset.id = task.id;
+      li.style.backgroundColor = getPriorityColor(task.priority);
 
       const title = document.createElement('div');
       title.className = 'title';
       title.textContent = task.title;
-      title.title = task.title;
 
       const btns = document.createElement('div');
       btns.className = 'btns';
 
-      // Left arrow
       const left = document.createElement('button');
       left.className = 'icon-btn';
-      left.setAttribute('aria-label','Mover a la columna anterior');
       left.innerHTML = '◀';
       left.addEventListener('click', ()=> moveLeft(task.id));
 
-      // Right arrow
       const right = document.createElement('button');
       right.className = 'icon-btn';
-      right.setAttribute('aria-label','Mover a la columna siguiente');
       right.innerHTML = '▶';
       right.addEventListener('click', ()=> moveRight(task.id));
 
-      // Delete
       const del = document.createElement('button');
       del.className = 'icon-btn';
-      del.setAttribute('aria-label','Eliminar tarea');
       del.innerHTML = '✖';
       del.addEventListener('click', ()=> removeTask(task.id));
 
-      // Ajustar visibilidad de flechas según estado
-      if(task.status === 'todo'){
-        left.style.visibility = 'hidden';
-        right.style.visibility = 'visible';
-      } else if(task.status === 'doing'){
-        left.style.visibility = 'visible';
-        right.style.visibility = 'visible';
-      } else {
-        left.style.visibility = 'visible';
-        right.style.visibility = 'hidden';
-      }
+      const prioritySelect = createPrioritySelect(task);
+
+      if(task.status === 'todo') left.style.visibility='hidden';
+      else if(task.status === 'done') right.style.visibility='hidden';
 
       btns.appendChild(left);
       btns.appendChild(right);
+      btns.appendChild(prioritySelect);
       btns.appendChild(del);
 
       li.appendChild(title);
@@ -160,9 +169,7 @@
       return li;
     }
 
-    // Render
     function render(){
-      // limpiar
       todoList.innerHTML = '';
       doingList.innerHTML = '';
       doneList.innerHTML = '';
@@ -178,35 +185,31 @@
       todoCount.textContent = todo.length;
       doingCount.textContent = doing.length;
       doneCount.textContent = done.length;
-
       totalCount.textContent = `${tasks.length} tarea${tasks.length===1?'':'s'}`;
     }
 
-    // Acciones
     function addTask(title){
       const t = title.trim();
       if(!t) return;
-      const task = {id: uid(), title: t, status: 'todo', created: Date.now()};
+      const task = {id: uid(), title: t, status: 'todo', priority: 'baja', created: Date.now()};
       tasks.unshift(task);
-      saveToStorage();
-      render();
-      input.value = '';
-      input.focus();
+      saveToStorage(); render();
+      input.value = ''; input.focus();
     }
 
     function findTask(id){ return tasks.find(t=>t.id===id); }
 
     function moveRight(id){
       const t = findTask(id); if(!t) return;
-      if(t.status === 'todo') t.status = 'doing';
-      else if(t.status === 'doing') t.status = 'done';
+      if(t.status==='todo') t.status='doing';
+      else if(t.status==='doing') t.status='done';
       saveToStorage(); render();
     }
 
     function moveLeft(id){
       const t = findTask(id); if(!t) return;
-      if(t.status === 'done') t.status = 'doing';
-      else if(t.status === 'doing') t.status = 'todo';
+      if(t.status==='done') t.status='doing';
+      else if(t.status==='doing') t.status='todo';
       saveToStorage(); render();
     }
 
@@ -215,15 +218,10 @@
       saveToStorage(); render();
     }
 
-    // Listeners
     addBtn.addEventListener('click', ()=> addTask(input.value));
-    input.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') addTask(input.value); });
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(input.value); });
 
-    // Inicializar
     loadFromStorage(); render();
-
-    // Exponer funciones para consola si quieres (debug)
-    window.__kanban = {tasks, render, addTask, moveLeft, moveRight, removeTask};
   </script>
 </body>
 </html>
