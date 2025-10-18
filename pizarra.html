@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pizarra</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+  #toolbar { margin: 10px; }
+  canvas { border: 1px solid #000; touch-action: none; }
+  button, select, input { margin-right: 5px; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <button id="drawBtn">Dibujar</button>
+  <button id="textBtn">Texto</button>
+  <button id="moveBtn">Mover</button>
+  <input type="color" id="colorPicker" value="#000000">
+  <input type="number" id="sizePicker" value="5" min="1" max="50">
+  <button id="clearBtn">Limpiar</button>
+  <button id="saveBtn">Descargar</button>
+</div>
+
+<canvas id="canvas" width="800" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let mode = 'draw';
+let drawing = false;
+let startX, startY;
+let elements = JSON.parse(localStorage.getItem('pizarraElements')) || [];
+let selectedElement = null;
+
+// Toolbar buttons
+document.getElementById('drawBtn').onclick = () => mode = 'draw';
+document.getElementById('textBtn').onclick = () => mode = 'text';
+document.getElementById('moveBtn').onclick = () => mode = 'move';
+document.getElementById('clearBtn').onclick = () => { elements = []; saveElements(); drawAll(); };
+document.getElementById('saveBtn').onclick = downloadImage;
+
+// Draw functions
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+    
+    if(mode === 'draw'){
+        drawing = true;
+        elements.push({ type: 'line', color: colorPicker.value, size: sizePicker.value, points: [{x: startX, y: startY}] });
+    } else if(mode === 'text'){
+        const text = prompt('Ingrese el texto:');
+        if(text){
+            const newText = { type: 'text', text, x: startX, y: startY, color: colorPicker.value, size: sizePicker.value*2 };
+            elements.push(newText);
+            saveElements();
+            drawAll();
+        }
+    } else if(mode === 'move'){
+        selectedElement = elements.find(el => {
+            if(el.type === 'text'){
+                ctx.font = `${el.size}px Arial`;
+                const width = ctx.measureText(el.text).width;
+                const height = el.size;
+                return startX >= el.x && startX <= el.x + width && startY >= el.y - height && startY <= el.y;
+            } else if(el.type === 'line'){
+                // Simple bounding box for lines
+                const xs = el.points.map(p => p.x);
+                const ys = el.points.map(p => p.y);
+                return startX >= Math.min(...xs) - 5 && startX <= Math.max(...xs) + 5 &&
+                       startY >= Math.min(...ys) - 5 && startY <= Math.max(...ys) + 5;
+            }
+            return false;
+        });
+    }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    if(drawing && mode === 'draw'){
+        const line = elements[elements.length-1];
+        line.points.push({x: mouseX, y: mouseY});
+        drawAll();
+    } else if(selectedElement && mode === 'move'){
+        const dx = mouseX - startX;
+        const dy = mouseY - startY;
+        startX = mouseX;
+        startY = mouseY;
+        if(selectedElement.type === 'text'){
+            selectedElement.x += dx;
+            selectedElement.y += dy;
+        } else if(selectedElement.type === 'line'){
+            selectedElement.points.forEach(p => { p.x += dx; p.y += dy; });
+        }
+        drawAll();
+    }
+});
+
+canvas.addEventListener('mouseup', () => {
+    drawing = false;
+    selectedElement = null;
+    saveElements();
+});
+
+// Drawing function
+function drawAll(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    elements.forEach(el => {
+        if(el.type === 'line'){
+            ctx.strokeStyle = el.color;
+            ctx.lineWidth = el.size;
+            ctx.beginPath();
+            ctx.moveTo(el.points[0].x, el.points[0].y);
+            for(let i=1;i<el.points.length;i++){
+                ctx.lineTo(el.points[i].x, el.points[i].y);
+            }
+            ctx.stroke();
+        } else if(el.type === 'text'){
+            ctx.fillStyle = el.color;
+            ctx.font = `${el.size}px Arial`;
+            ctx.fillText(el.text, el.x, el.y);
+        }
+    });
+}
+
+// Save/load
+function saveElements(){
+    localStorage.setItem('pizarraElements', JSON.stringify(elements));
+}
+
+// Download
+function downloadImage(){
+    const link = document.createElement('a');
+    link.download = 'pizarra.png';
+    link.href = canvas.toDataURL();
+    link.click();
+}
+
+// Initial draw
+drawAll();
+</script>
+
+</body>
+</html>
