@@ -3,10 +3,11 @@ Script: extraer_codigo_proyecto.py
 Descripción:
   Recorre recursivamente una carpeta de proyecto (Java Spring o Angular)
   y genera un archivo de texto con todo el código fuente relevante concatenado.
+  Ignora automáticamente los archivos de prueba (*.spec.ts).
   Permite seleccionar automáticamente entre dos rutas comentadas.
 
 Autor: (Tu nombre)
-Versión: 2.1
+Versión: 2.2
 """
 
 import os
@@ -44,6 +45,9 @@ def extraer_codigo(base_dir: str, salida: str):
         for root, dirs, files in os.walk(base_dir):
             dirs[:] = [d for d in dirs if d not in CARPETAS_EXCLUIDAS]
             for file in files:
+                # Ignorar archivos spec.ts
+                if file.endswith(".spec.ts"):
+                    continue
                 _, ext = os.path.splitext(file)
                 if ext.lower() in EXTENSIONES_PERMITIDAS:
                     ruta_completa = os.path.join(root, file)
