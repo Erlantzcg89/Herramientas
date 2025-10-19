@@ -3,11 +3,11 @@ Script: extraer_codigo_proyecto.py
 Descripción:
   Recorre recursivamente una carpeta de proyecto (Java Spring o Angular)
   y genera un archivo de texto con todo el código fuente relevante concatenado.
-  Ignora automáticamente los archivos de prueba (*.spec.ts).
+  Ignora automáticamente los archivos de prueba (*.spec.ts) y archivos específicos como mvnw.
   Permite seleccionar automáticamente entre dos rutas comentadas.
 
-Autor: (Tu nombre)
-Versión: 2.2
+Autor: (E. Caballero)
+Versión: 2.3
 """
 
 import os
@@ -29,14 +29,21 @@ ARCHIVO_SALIDA = "codigo_extraido.txt"
 
 # Extensiones de archivos relevantes
 EXTENSIONES_PERMITIDAS = {
-    ".java", ".xml", ".properties", ".yml", ".yaml",  # Spring Boot
-    ".html", ".ts", ".css"                            # Angular
+    ".java", ".properties", # Spring Boot ".xml", ".yml", ".yaml", ".properties",
+    ".html", ".ts", ".css" # Angular
 }
 
 # Carpetas a excluir
 CARPETAS_EXCLUIDAS = {
     "dist", "build", "target", ".git", ".idea", "__pycache__",
-    ".angular", ".vscode", "node_modules", "public", "banner", "footer", "home", "menu-principal", "mi-perfil", "register", "guards" # excluidas angular
+    ".mvn", "test", "repository", "model",  # excluidas spring
+    ".angular", ".vscode", "node_modules", "public", "banner", "footer",
+    "home", "menu-principal", "mi-perfil", "register", "guards" # excluidas angular
+}
+
+# Archivos a excluir explícitamente
+ARCHIVOS_EXCLUIDOS = {
+    "pom.properties", "Redsocial2026Application.java"
 }
 
 # ==== LÓGICA ====
@@ -44,11 +51,17 @@ CARPETAS_EXCLUIDAS = {
 def extraer_codigo(base_dir: str, salida: str):
     with open(salida, "w", encoding="utf-8") as out:
         for root, dirs, files in os.walk(base_dir):
+            # Filtrar carpetas excluidas
             dirs[:] = [d for d in dirs if d not in CARPETAS_EXCLUIDAS]
+            
             for file in files:
+                # Ignorar archivos explícitamente excluidos
+                if file in ARCHIVOS_EXCLUIDOS:
+                    continue
                 # Ignorar archivos spec.ts
                 if file.endswith(".spec.ts"):
                     continue
+
                 _, ext = os.path.splitext(file)
                 if ext.lower() in EXTENSIONES_PERMITIDAS:
                     ruta_completa = os.path.join(root, file)
@@ -59,6 +72,7 @@ def extraer_codigo(base_dir: str, salida: str):
                         out.write(contenido)
                     except Exception as e:
                         print(f"[⚠️] No se pudo leer {ruta_completa}: {e}")
+
     print(f"\n✅ Código extraído correctamente en: {os.path.abspath(salida)}")
 
 def abrir_archivo(ruta_archivo: str):
