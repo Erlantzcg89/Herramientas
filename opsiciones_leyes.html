@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apuntes Oposiciones Osakidetza</title>
+    <style>
+        :root {
+            --rojo-oscuro: #8B0000;
+            --rojo: #B22222;
+            --rojo-claro: #F08080;
+            --fondo: #FFF5F5;
+            --texto: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--fondo);
+            color: var(--texto);
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: var(--rojo);
+            color: white;
+            text-align: center;
+            padding: 1rem 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            background-color: var(--rojo-oscuro);
+        }
+
+        .tab {
+            padding: 1rem 2rem;
+            cursor: pointer;
+            color: white;
+            transition: background 0.3s;
+        }
+
+        .tab:hover {
+            background-color: var(--rojo-claro);
+            color: var(--rojo-oscuro);
+        }
+
+        .tab.active {
+            background-color: var(--rojo-claro);
+            color: var(--rojo-oscuro);
+            font-weight: bold;
+        }
+
+        .content {
+            display: none;
+            padding: 2rem;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 1rem;
+            border: 2px solid var(--rojo);
+            border-radius: 8px;
+            font-size: 1rem;
+            overflow: hidden; /* Evita scroll vertical */
+            box-sizing: border-box; /* Evita desbordes horizontales */
+        }
+
+        @media (max-width: 600px) {
+            .tab {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            textarea {
+                min-height: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header>Apuntes Oposiciones Osakidetza</header>
+
+<div class="tabs">
+    <div class="tab active" data-tab="1">Tema 1</div>
+    <div class="tab" data-tab="2">Tema 2</div>
+    <div class="tab" data-tab="3">Tema 3</div>
+    <div class="tab" data-tab="4">Tema 4</div>
+    <div class="tab" data-tab="5">Tema 5</div>
+</div>
+
+<div class="content active" id="content-1">
+    <textarea placeholder="Introduce tus apuntes del Tema 1 aquí..." data-tab="1"></textarea>
+</div>
+<div class="content" id="content-2">
+    <textarea placeholder="Introduce tus apuntes del Tema 2 aquí..." data-tab="2"></textarea>
+</div>
+<div class="content" id="content-3">
+    <textarea placeholder="Introduce tus apuntes del Tema 3 aquí..." data-tab="3"></textarea>
+</div>
+<div class="content" id="content-4">
+    <textarea placeholder="Introduce tus apuntes del Tema 4 aquí..." data-tab="4"></textarea>
+</div>
+<div class="content" id="content-5">
+    <textarea placeholder="Introduce tus apuntes del Tema 5 aquí..." data-tab="5"></textarea>
+</div>
+
+<script>
+    const tabs = document.querySelectorAll('.tab');
+    const contents = document.querySelectorAll('.content');
+    const textareas = document.querySelectorAll('textarea');
+
+    // Función para autoajustar altura
+    function autoResizeTextarea(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    // Cargar datos guardados en localStorage
+    textareas.forEach(textarea => {
+        const saved = localStorage.getItem('apunte-' + textarea.dataset.tab);
+        if (saved) {
+            textarea.value = saved;
+            autoResizeTextarea(textarea);
+        }
+
+        // Guardar y ajustar altura al escribir
+        textarea.addEventListener('input', () => {
+            localStorage.setItem('apunte-' + textarea.dataset.tab, textarea.value);
+            autoResizeTextarea(textarea);
+        });
+
+        // Ajuste inicial
+        autoResizeTextarea(textarea);
+    });
+
+    // Cambio de pestañas
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            contents.forEach(c => c.classList.remove('active'));
+            document.getElementById(`content-${tab.dataset.tab}`).classList.add('active');
+        });
+    });
+</script>
+
+</body>
+</html>
