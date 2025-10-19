@@ -93,6 +93,7 @@
     .bold-btn { background-color: #333; color: #fff; }
     .yellow-btn { background-color: yellow; color: #333; }
     .white-btn { background-color: white; color: #333; border: 1px solid #ccc; }
+    .download-btn { background-color: var(--rojo); color: white; }
 
     @media (max-width: 600px) {
         .tab {
@@ -123,6 +124,7 @@
         <button class="bold-btn">Negrita</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
+        <button class="download-btn">Descargar Apuntes</button>
     </div>
     <div class="editable" contenteditable="true" data-tab="1" spellcheck="false"></div>
 </div>
@@ -132,6 +134,7 @@
         <button class="bold-btn">Negrita</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
+        <button class="download-btn">Descargar Apuntes</button>
     </div>
     <div class="editable" contenteditable="true" data-tab="2" spellcheck="false"></div>
 </div>
@@ -141,6 +144,7 @@
         <button class="bold-btn">Negrita</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
+        <button class="download-btn">Descargar Apuntes</button>
     </div>
     <div class="editable" contenteditable="true" data-tab="3" spellcheck="false"></div>
 </div>
@@ -150,6 +154,7 @@
         <button class="bold-btn">Negrita</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
+        <button class="download-btn">Descargar Apuntes</button>
     </div>
     <div class="editable" contenteditable="true" data-tab="4" spellcheck="false"></div>
 </div>
@@ -159,6 +164,7 @@
         <button class="bold-btn">Negrita</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
+        <button class="download-btn">Descargar Apuntes</button>
     </div>
     <div class="editable" contenteditable="true" data-tab="5" spellcheck="false"></div>
 </div>
@@ -214,6 +220,30 @@ allButtons.forEach(button => {
         // Guardar contenido actualizado
         const tabId = editable.dataset.tab;
         localStorage.setItem('apunte-' + tabId, editable.innerHTML);
+    });
+});
+
+// Descargar contenido
+const downloadButtons = document.querySelectorAll('.download-btn');
+
+downloadButtons.forEach(btn => {
+    btn.addEventListener('click', e => {
+        const contentDiv = e.target.closest('.content').querySelector('.editable');
+        const tabId = contentDiv.dataset.tab;
+        const contenido = contentDiv.innerHTML;
+
+        // Crear un blob con el contenido
+        const blob = new Blob([contenido], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+
+        // Crear enlace temporal y hacer clic para descargar
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `apuntes_tema_${tabId}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     });
 });
 </script>
