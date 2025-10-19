@@ -35,7 +35,8 @@ EXTENSIONES_PERMITIDAS = {
 
 # Carpetas a excluir
 CARPETAS_EXCLUIDAS = {
-    "node_modules", "dist", "build", "target", ".git", ".idea", ".vscode", "__pycache__"
+    "dist", "build", "target", ".git", ".idea", "__pycache__",
+    ".angular", ".vscode", "node_modules", "public", "banner", "footer", "home", "menu-principal", "mi-perfil", "register", "guards" # excluidas angular
 }
 
 # ==== LÓGICA ====
