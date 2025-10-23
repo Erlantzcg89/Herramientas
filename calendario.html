@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calendario</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#fff6f6;
+      --card:#fff;
+      --deep:#7b0f0f; /* deep red */
+      --mid:#c62828;  /* mid red */
+      --soft:#ffebe9; /* soft */
+      --muted:#6b6b6b;
+      --glass: rgba(255,255,255,0.6);
+      --shadow: 0 8px 24px rgba(123,15,15,0.12);
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--soft),#fff6f2);color:#2b1818}
+    .app{
+      max-width:1100px;margin:32px auto;padding:28px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,0.8),rgba(255,255,255,0.95));box-shadow:var(--shadow);
+      backdrop-filter: blur(6px);
+    }
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .title{display:flex;gap:12px;align-items:center}
+    .logo{
+      width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--deep),var(--mid));display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:20px;box-shadow:0 6px 18px rgba(198,40,40,0.18)
+    }
+    h1{font-size:20px;margin:0}
+    .controls{display:flex;gap:8px;align-items:center}
+    .monthNav{display:flex;align-items:center;gap:12px}
+    button.icon{background:transparent;border:none;padding:10px;border-radius:10px;cursor:pointer}
+    button.icon:hover{background:rgba(0,0,0,0.04)}
+    .monthLabel{font-weight:700;font-size:18px;color:var(--deep)}
+
+    .grid{display:grid;grid-template-columns: 1fr 380px;gap:20px}
+
+    .calendarCard{padding:16px;border-radius:12px;background:var(--card);box-shadow:0 6px 18px rgba(0,0,0,0.04)}
+    .weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:10px}
+    .weekday{font-size:12px;color:var(--muted);text-align:center}
+    .days{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+    .day{
+      min-height:96px;border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;cursor:pointer;position:relative;border:1px solid rgba(0,0,0,0.03)
+    }
+    .day.outside{opacity:0.4}
+    .dateNum{font-weight:600;color:var(--deep)}
+    .tasksList{overflow:auto;flex:1}
+    .taskChip{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:999px;font-size:12px;background:linear-gradient(90deg,rgba(198,40,40,0.06),rgba(123,15,15,0.03));color:var(--deep);margin-bottom:6px}
+    .taskDone{opacity:0.5;text-decoration:line-through}
+
+    .sidebar{padding:16px;border-radius:12px;background:linear-gradient(180deg,#fff,#fff6f8);box-shadow:0 6px 18px rgba(0,0,0,0.04)}
+    .sidebar h3{margin:0 0 8px 0;color:var(--deep)}
+    .addTask{display:flex;gap:8px;margin-bottom:12px}
+    input[type=text]{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)}
+    .btn{background:linear-gradient(90deg,var(--mid),var(--deep));color:white;padding:10px 12px;border:none;border-radius:10px;cursor:pointer}
+    .small{font-size:12px;padding:6px 8px}
+    .muted{color:var(--muted);font-size:13px}
+    .todayBadge{position:absolute;right:8px;top:8px;background:rgba(198,40,40,0.12);color:var(--deep);padding:4px 8px;border-radius:999px;font-size:12px}
+
+    footer{margin-top:16px;text-align:center;color:var(--muted);font-size:13px}
+
+    @media (max-width:900px){
+      .grid{grid-template-columns:1fr;}
+      .sidebar{order:2}
+      .calendarCard{order:1}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <div class="logo">C</div>
+        <div>
+          <h1>Calendario</h1>
+          <div class="muted">App local (persistente) — tareas por día</div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="monthNav">
+          <button class="icon" id="prevBtn" title="Mes anterior">◀</button>
+          <div class="monthLabel" id="monthLabel">—</div>
+          <button class="icon" id="nextBtn" title="Mes siguiente">▶</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="calendarCard">
+        <div class="weekdays" id="weekdays"></div>
+        <div class="days" id="days"></div>
+      </section>
+
+      <aside class="sidebar">
+        <h3 id="selectedDateLabel">Selecciona un día</h3>
+        <div class="muted" id="selectedDateSub">Haz click en un día para ver o añadir tareas</div>
+
+        <div style="height:12px"></div>
+
+        <div class="addTask">
+          <input type="text" id="taskInput" placeholder="Añadir tarea" />
+          <button class="btn small" id="addTaskBtn">Añadir</button>
+        </div>
+
+        <div id="tasksContainer"></div>
+
+        <div style="height:8px"></div>
+        <div style="display:flex;gap:8px;justify-content:space-between">
+          <button class="small" id="exportBtn">Exportar</button>
+          <button class="small" id="importBtn">Importar</button>
+          <button class="small" id="clearDayBtn">Borrar día</button>
+        </div>
+
+        <div style="height:8px"></div>
+        <div class="muted">Los datos se guardan en <strong>localStorage</strong> de tu navegador.</div>
+      </aside>
+    </main>
+
+    <footer>App persistente. Guardado automático.</footer>
+  </div>
+
+  <script>
+    // Utilidades
+    const weekdaysShort = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+    // Estado
+    let viewDate = new Date(); // fecha mostrada (cualquiera del mes)
+    let selectedDate = null; // 'YYYY-MM-DD'
+
+    // DOM
+    const monthLabel = document.getElementById('monthLabel');
+    const daysEl = document.getElementById('days');
+    const weekdaysEl = document.getElementById('weekdays');
+    const selectedDateLabel = document.getElementById('selectedDateLabel');
+    const selectedDateSub = document.getElementById('selectedDateSub');
+    const tasksContainer = document.getElementById('tasksContainer');
+    const taskInput = document.getElementById('taskInput');
+
+    // Persistencia
+    const STORAGE_KEY = 'calendario_tareas_v1';
+    function loadAll(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw? JSON.parse(raw): {};
+      }catch(e){console.error(e);return {}};
+    }
+    function saveAll(obj){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+    }
+    function tasksFor(dateStr){
+      const all = loadAll();
+      return all[dateStr] || [];
+    }
+    function setTasksFor(dateStr, arr){
+      const all = loadAll();
+      if(arr.length) all[dateStr]=arr; else delete all[dateStr];
+      saveAll(all);
+    }
+
+    // Render weekdays
+    function renderWeekdays(){
+      weekdaysEl.innerHTML='';
+      for(const d of weekdaysShort){
+        const el = document.createElement('div'); el.className='weekday'; el.textContent=d; weekdaysEl.appendChild(el);
+      }
+    }
+
+    // Helpers
+    function startOfMonth(d){return new Date(d.getFullYear(), d.getMonth(),1)}
+    function endOfMonth(d){return new Date(d.getFullYear(), d.getMonth()+1,0)}
+    function fmtYMD(d){return d.toISOString().slice(0,10)}
+
+    // Render calendar
+    function renderCalendar(){
+      const start = startOfMonth(viewDate);
+      const end = endOfMonth(viewDate);
+      // week starts Monday -> get day index (0=Sun). We want Monday index 0.
+      const startWeekday = (start.getDay()+6)%7; // 0..6 where 0=Mon
+      const totalCells = startWeekday + end.getDate();
+      const weeks = Math.ceil(totalCells/7);
+      const cells = weeks*7;
+
+      monthLabel.textContent = start.toLocaleString('es-ES',{month:'long', year:'numeric'});
+
+      daysEl.innerHTML='';
+
+      for(let i=0;i<cells;i++){
+        const cell = document.createElement('div'); cell.className='day';
+        const dayIndex = i - startWeekday + 1;
+        let cellDate = null;
+        if(dayIndex>=1 && dayIndex<=end.getDate()){
+          cellDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), dayIndex);
+        }else{
+          // outside month
+          // compute actual neighbour month day for display (optional)
+          const tmp = new Date(viewDate.getFullYear(), viewDate.getMonth(), dayIndex);
+          cellDate = tmp;
+          cell.classList.add('outside');
+        }
+
+        const ymd = fmtYMD(cellDate);
+        const dateEl = document.createElement('div'); dateEl.className='dateNum'; dateEl.textContent = cellDate.getDate();
+        cell.appendChild(dateEl);
+
+        // today badge
+        const today = new Date(); if(ymd===fmtYMD(today)){
+          const b = document.createElement('div'); b.className='todayBadge'; b.textContent='Hoy'; cell.appendChild(b);
+        }
+
+        // tasks (preview)
+        const list = document.createElement('div'); list.className='tasksList';
+        const t = tasksFor(ymd);
+        for(const task of t.slice(0,3)){
+          const chip = document.createElement('div'); chip.className='taskChip'+(task.done? ' taskDone':'');
+          chip.textContent = task.text;
+          list.appendChild(chip);
+        }
+        if(t.length>3){
+          const more = document.createElement('div'); more.className='muted'; more.style.fontSize='12px'; more.textContent = `+${t.length-3} más`;
+          list.appendChild(more);
+        }
+        cell.appendChild(list);
+
+        // click
+        cell.addEventListener('click',()=>{
+          selectedDate = ymd;
+          openSidebarFor(ymd);
+        });
+
+        daysEl.appendChild(cell);
+      }
+    }
+
+    function openSidebarFor(ymd){
+      const d = new Date(ymd);
+      selectedDateLabel.textContent = d.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+      selectedDateSub.textContent = ymd;
+      renderTasksList(ymd);
+    }
+
+    function renderTasksList(ymd){
+      tasksContainer.innerHTML='';
+      const arr = tasksFor(ymd);
+      if(arr.length===0){
+        const p = document.createElement('div'); p.className='muted'; p.textContent='Sin tareas para este día.'; tasksContainer.appendChild(p); return;
+      }
+      for(let i=0;i<arr.length;i++){
+        const item = arr[i];
+        const row = document.createElement('div'); row.style.display='flex'; row.style.gap='8px'; row.style.alignItems='center'; row.style.marginBottom='8px';
+
+        const chk = document.createElement('input'); chk.type='checkbox'; chk.checked = !!item.done; chk.addEventListener('change',()=>{
+          arr[i].done = chk.checked; setTasksFor(ymd, arr); renderCalendar(); renderTasksList(ymd);
+        });
+        row.appendChild(chk);
+
+        const txt = document.createElement('div'); txt.style.flex='1'; txt.textContent = item.text; if(item.done) txt.className='taskDone'; row.appendChild(txt);
+
+        const edit = document.createElement('button'); edit.className='small'; edit.textContent='Editar'; edit.addEventListener('click',()=>{
+          const val = prompt('Editar tarea', item.text);
+          if(val!==null){ arr[i].text = val.trim(); setTasksFor(ymd, arr); renderCalendar(); renderTasksList(ymd); }
+        }); row.appendChild(edit);
+
+        const del = document.createElement('button'); del.className='small'; del.textContent='Borrar'; del.addEventListener('click',()=>{
+          if(confirm('Borrar esta tarea?')){ arr.splice(i,1); setTasksFor(ymd, arr); renderCalendar(); renderTasksList(ymd); }
+        }); row.appendChild(del);
+
+        tasksContainer.appendChild(row);
+      }
+    }
+
+    // Add quick task
+    document.getElementById('addTaskBtn').addEventListener('click', ()=>{
+      const txt = taskInput.value.trim(); if(!txt) return; if(!selectedDate){ alert('Selecciona un día primero'); return; }
+      const arr = tasksFor(selectedDate);
+      arr.push({text:txt, done:false}); setTasksFor(selectedDate, arr);
+      taskInput.value=''; renderCalendar(); renderTasksList(selectedDate);
+    });
+    taskInput.addEventListener('keydown',(e)=>{ if(e.key==='Enter') document.getElementById('addTaskBtn').click(); });
+
+    // Export / Import
+    document.getElementById('exportBtn').addEventListener('click', ()=>{
+      const data = localStorage.getItem(STORAGE_KEY) || '{}';
+      const blob = new Blob([data], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = 'calendario-tareas.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+    document.getElementById('importBtn').addEventListener('click', ()=>{
+      const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.addEventListener('change',()=>{
+        const f = inp.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = ()=>{
+          try{ const obj = JSON.parse(reader.result); localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); renderCalendar(); if(selectedDate) renderTasksList(selectedDate); alert('Importado con éxito'); }catch(e){alert('Archivo inválido');}
+        }; reader.readAsText(f);
+      }); inp.click();
+    });
+
+    // Clear day
+    document.getElementById('clearDayBtn').addEventListener('click', ()=>{
+      if(!selectedDate){ alert('Selecciona un día primero'); return; }
+      if(confirm('Borrar todas las tareas de ' + selectedDate + '?')){ setTasksFor(selectedDate, []); renderCalendar(); renderTasksList(selectedDate); }
+    });
+
+    // Navigation
+    document.getElementById('prevBtn').addEventListener('click', ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1,1); renderCalendar(); });
+    document.getElementById('nextBtn').addEventListener('click', ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1,1); renderCalendar(); });
+
+    // Init
+    renderWeekdays(); renderCalendar();
+  </script>
+</body>
+</html>
