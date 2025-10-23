@@ -66,6 +66,49 @@
       .sidebar{order:2}
       .calendarCard{order:1}
     }
+
+    /* --- Estilo para versión de escritorio (pantallas grandes) --- */
+    @media (min-width: 901px) {
+      .app {
+        max-width: 1300px;
+        padding: 40px;
+      }
+
+      .calendarCard {
+        padding: 24px;
+      }
+
+      .days {
+        gap: 12px;
+      }
+
+      .day {
+        min-height: 120px;
+        padding: 12px;
+        font-size: 15px;
+      }
+
+      .weekday {
+        font-size: 14px;
+      }
+
+      .dateNum {
+        font-size: 16px;
+      }
+
+      .taskChip {
+        font-size: 13px;
+        padding: 8px 10px;
+      }
+
+      .monthLabel {
+        font-size: 22px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -176,8 +219,7 @@
     function renderCalendar(){
       const start = startOfMonth(viewDate);
       const end = endOfMonth(viewDate);
-      // week starts Monday -> get day index (0=Sun). We want Monday index 0.
-      const startWeekday = (start.getDay()+6)%7; // 0..6 where 0=Mon
+      const startWeekday = (start.getDay()+6)%7;
       const totalCells = startWeekday + end.getDate();
       const weeks = Math.ceil(totalCells/7);
       const cells = weeks*7;
@@ -193,8 +235,6 @@
         if(dayIndex>=1 && dayIndex<=end.getDate()){
           cellDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), dayIndex);
         }else{
-          // outside month
-          // compute actual neighbour month day for display (optional)
           const tmp = new Date(viewDate.getFullYear(), viewDate.getMonth(), dayIndex);
           cellDate = tmp;
           cell.classList.add('outside');
@@ -204,16 +244,15 @@
         const dateEl = document.createElement('div'); dateEl.className='dateNum'; dateEl.textContent = cellDate.getDate();
         cell.appendChild(dateEl);
 
-        // today badge
         const today = new Date(); if(ymd===fmtYMD(today)){
           const b = document.createElement('div'); b.className='todayBadge'; b.textContent='Hoy'; cell.appendChild(b);
         }
 
-        // tasks (preview)
         const list = document.createElement('div'); list.className='tasksList';
         const t = tasksFor(ymd);
         for(const task of t.slice(0,3)){
           const chip = document.createElement('div'); chip.className='taskChip'+(task.done? ' taskDone':'');
+
           chip.textContent = task.text;
           list.appendChild(chip);
         }
@@ -223,7 +262,6 @@
         }
         cell.appendChild(list);
 
-        // click
         cell.addEventListener('click',()=>{
           selectedDate = ymd;
           openSidebarFor(ymd);
@@ -270,7 +308,6 @@
       }
     }
 
-    // Add quick task
     document.getElementById('addTaskBtn').addEventListener('click', ()=>{
       const txt = taskInput.value.trim(); if(!txt) return; if(!selectedDate){ alert('Selecciona un día primero'); return; }
       const arr = tasksFor(selectedDate);
@@ -279,7 +316,6 @@
     });
     taskInput.addEventListener('keydown',(e)=>{ if(e.key==='Enter') document.getElementById('addTaskBtn').click(); });
 
-    // Export / Import
     document.getElementById('exportBtn').addEventListener('click', ()=>{
       const data = localStorage.getItem(STORAGE_KEY) || '{}';
       const blob = new Blob([data], {type:'application/json'});
@@ -294,17 +330,14 @@
       }); inp.click();
     });
 
-    // Clear day
     document.getElementById('clearDayBtn').addEventListener('click', ()=>{
       if(!selectedDate){ alert('Selecciona un día primero'); return; }
       if(confirm('Borrar todas las tareas de ' + selectedDate + '?')){ setTasksFor(selectedDate, []); renderCalendar(); renderTasksList(selectedDate); }
     });
 
-    // Navigation
     document.getElementById('prevBtn').addEventListener('click', ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1,1); renderCalendar(); });
     document.getElementById('nextBtn').addEventListener('click', ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1,1); renderCalendar(); });
 
-    // Init
     renderWeekdays(); renderCalendar();
   </script>
 </body>
