@@ -9,9 +9,9 @@
     :root{
       --bg:#fff6f6;
       --card:#fff;
-      --deep:#7b0f0f; /* deep red */
-      --mid:#c62828;  /* mid red */
-      --soft:#ffebe9; /* soft */
+      --deep:#7b0f0f;
+      --mid:#c62828;
+      --soft:#ffebe9;
       --muted:#6b6b6b;
       --glass: rgba(255,255,255,0.6);
       --shadow: 0 8px 24px rgba(123,15,15,0.12);
@@ -67,47 +67,16 @@
       .calendarCard{order:1}
     }
 
-    /* --- Estilo para versión de escritorio (pantallas grandes) --- */
     @media (min-width: 901px) {
-      .app {
-        max-width: 1300px;
-        padding: 40px;
-      }
-
-      .calendarCard {
-        padding: 24px;
-      }
-
-      .days {
-        gap: 12px;
-      }
-
-      .day {
-        min-height: 120px;
-        padding: 12px;
-        font-size: 15px;
-      }
-
-      .weekday {
-        font-size: 14px;
-      }
-
-      .dateNum {
-        font-size: 16px;
-      }
-
-      .taskChip {
-        font-size: 13px;
-        padding: 8px 10px;
-      }
-
-      .monthLabel {
-        font-size: 22px;
-      }
-
-      h1 {
-        font-size: 24px;
-      }
+      .app { max-width: 1300px; padding: 40px; }
+      .calendarCard { padding: 24px; }
+      .days { gap: 12px; }
+      .day { min-height: 120px; padding: 12px; font-size: 15px; }
+      .weekday { font-size: 14px; }
+      .dateNum { font-size: 16px; }
+      .taskChip { font-size: 13px; padding: 8px 10px; }
+      .monthLabel { font-size: 22px; }
+      h1 { font-size: 24px; }
     }
   </style>
 </head>
@@ -165,14 +134,10 @@
   </div>
 
   <script>
-    // Utilidades
     const weekdaysShort = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    let viewDate = new Date();
+    let selectedDate = null;
 
-    // Estado
-    let viewDate = new Date(); // fecha mostrada (cualquiera del mes)
-    let selectedDate = null; // 'YYYY-MM-DD'
-
-    // DOM
     const monthLabel = document.getElementById('monthLabel');
     const daysEl = document.getElementById('days');
     const weekdaysEl = document.getElementById('weekdays');
@@ -181,98 +146,103 @@
     const tasksContainer = document.getElementById('tasksContainer');
     const taskInput = document.getElementById('taskInput');
 
-    // Persistencia
     const STORAGE_KEY = 'calendario_tareas_v1';
     function loadAll(){
-      try{
-        const raw = localStorage.getItem(STORAGE_KEY);
+      try{ const raw = localStorage.getItem(STORAGE_KEY);
         return raw? JSON.parse(raw): {};
-      }catch(e){console.error(e);return {}};
+      }catch(e){console.error(e);return {};}
     }
-    function saveAll(obj){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-    }
-    function tasksFor(dateStr){
-      const all = loadAll();
-      return all[dateStr] || [];
-    }
+    function saveAll(obj){ localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); }
+    function tasksFor(dateStr){ const all = loadAll(); return all[dateStr] || []; }
     function setTasksFor(dateStr, arr){
       const all = loadAll();
       if(arr.length) all[dateStr]=arr; else delete all[dateStr];
       saveAll(all);
     }
 
-    // Render weekdays
     function renderWeekdays(){
       weekdaysEl.innerHTML='';
       for(const d of weekdaysShort){
-        const el = document.createElement('div'); el.className='weekday'; el.textContent=d; weekdaysEl.appendChild(el);
+        const el=document.createElement('div');
+        el.className='weekday';
+        el.textContent=d;
+        weekdaysEl.appendChild(el);
       }
     }
 
-    // Helpers
     function startOfMonth(d){return new Date(d.getFullYear(), d.getMonth(),1)}
     function endOfMonth(d){return new Date(d.getFullYear(), d.getMonth()+1,0)}
-    function fmtYMD(d){return d.toISOString().slice(0,10)}
 
-    // Render calendar
+    // ✅ Corrección: usar fecha local sin UTC
+    function fmtYMD(d){
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
     function renderCalendar(){
-      const start = startOfMonth(viewDate);
-      const end = endOfMonth(viewDate);
-      const startWeekday = (start.getDay()+6)%7;
-      const totalCells = startWeekday + end.getDate();
-      const weeks = Math.ceil(totalCells/7);
-      const cells = weeks*7;
+      const start=startOfMonth(viewDate);
+      const end=endOfMonth(viewDate);
+      const startWeekday=(start.getDay()+6)%7;
+      const totalCells=startWeekday+end.getDate();
+      const weeks=Math.ceil(totalCells/7);
+      const cells=weeks*7;
 
-      monthLabel.textContent = start.toLocaleString('es-ES',{month:'long', year:'numeric'});
-
+      monthLabel.textContent=start.toLocaleString('es-ES',{month:'long',year:'numeric'});
       daysEl.innerHTML='';
 
       for(let i=0;i<cells;i++){
-        const cell = document.createElement('div'); cell.className='day';
-        const dayIndex = i - startWeekday + 1;
-        let cellDate = null;
-        if(dayIndex>=1 && dayIndex<=end.getDate()){
-          cellDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), dayIndex);
+        const cell=document.createElement('div');
+        cell.className='day';
+        const dayIndex=i-startWeekday+1;
+        let cellDate=null;
+        if(dayIndex>=1&&dayIndex<=end.getDate()){
+          cellDate=new Date(viewDate.getFullYear(),viewDate.getMonth(),dayIndex);
         }else{
-          const tmp = new Date(viewDate.getFullYear(), viewDate.getMonth(), dayIndex);
-          cellDate = tmp;
+          cellDate=new Date(viewDate.getFullYear(),viewDate.getMonth(),dayIndex);
           cell.classList.add('outside');
         }
-
-        const ymd = fmtYMD(cellDate);
-        const dateEl = document.createElement('div'); dateEl.className='dateNum'; dateEl.textContent = cellDate.getDate();
+        const ymd=fmtYMD(cellDate);
+        const dateEl=document.createElement('div');
+        dateEl.className='dateNum';
+        dateEl.textContent=cellDate.getDate();
         cell.appendChild(dateEl);
 
-        const today = new Date(); if(ymd===fmtYMD(today)){
-          const b = document.createElement('div'); b.className='todayBadge'; b.textContent='Hoy'; cell.appendChild(b);
+        const today=new Date();
+        if(ymd===fmtYMD(today)){
+          const b=document.createElement('div');
+          b.className='todayBadge';
+          b.textContent='Hoy';
+          cell.appendChild(b);
         }
 
-        const list = document.createElement('div'); list.className='tasksList';
-        const t = tasksFor(ymd);
+        const list=document.createElement('div');
+        list.className='tasksList';
+        const t=tasksFor(ymd);
         for(const task of t.slice(0,3)){
-          const chip = document.createElement('div'); chip.className='taskChip'+(task.done? ' taskDone':'');
-
-          chip.textContent = task.text;
+          const chip=document.createElement('div');
+          chip.className='taskChip'+(task.done?' taskDone':'');
+          chip.textContent=task.text;
           list.appendChild(chip);
         }
         if(t.length>3){
-          const more = document.createElement('div'); more.className='muted'; more.style.fontSize='12px'; more.textContent = `+${t.length-3} más`;
+          const more=document.createElement('div');
+          more.className='muted';
+          more.style.fontSize='12px';
+          more.textContent=`+${t.length-3} más`;
           list.appendChild(more);
         }
         cell.appendChild(list);
 
-        cell.addEventListener('click',()=>{
-          selectedDate = ymd;
-          openSidebarFor(ymd);
-        });
-
+        cell.addEventListener('click',()=>{ selectedDate=ymd; openSidebarFor(ymd); });
         daysEl.appendChild(cell);
       }
     }
 
     function openSidebarFor(ymd){
-      const d = new Date(ymd);
+      const [year, month, day] = ymd.split('-').map(Number);
+      const d = new Date(year, month - 1, day);
       selectedDateLabel.textContent = d.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
       selectedDateSub.textContent = ymd;
       renderTasksList(ymd);
@@ -280,63 +250,134 @@
 
     function renderTasksList(ymd){
       tasksContainer.innerHTML='';
-      const arr = tasksFor(ymd);
+      const arr=tasksFor(ymd);
       if(arr.length===0){
-        const p = document.createElement('div'); p.className='muted'; p.textContent='Sin tareas para este día.'; tasksContainer.appendChild(p); return;
+        const p=document.createElement('div');
+        p.className='muted';
+        p.textContent='Sin tareas para este día.';
+        tasksContainer.appendChild(p);
+        return;
       }
       for(let i=0;i<arr.length;i++){
-        const item = arr[i];
-        const row = document.createElement('div'); row.style.display='flex'; row.style.gap='8px'; row.style.alignItems='center'; row.style.marginBottom='8px';
+        const item=arr[i];
+        const row=document.createElement('div');
+        row.style.display='flex';
+        row.style.gap='8px';
+        row.style.alignItems='center';
+        row.style.marginBottom='8px';
 
-        const chk = document.createElement('input'); chk.type='checkbox'; chk.checked = !!item.done; chk.addEventListener('change',()=>{
-          arr[i].done = chk.checked; setTasksFor(ymd, arr); renderCalendar(); renderTasksList(ymd);
+        const chk=document.createElement('input');
+        chk.type='checkbox';
+        chk.checked=!!item.done;
+        chk.addEventListener('change',()=>{
+          arr[i].done=chk.checked;
+          setTasksFor(ymd,arr);
+          renderCalendar();
+          renderTasksList(ymd);
         });
         row.appendChild(chk);
 
-        const txt = document.createElement('div'); txt.style.flex='1'; txt.textContent = item.text; if(item.done) txt.className='taskDone'; row.appendChild(txt);
+        const txt=document.createElement('div');
+        txt.style.flex='1';
+        txt.textContent=item.text;
+        if(item.done) txt.className='taskDone';
+        row.appendChild(txt);
 
-        const edit = document.createElement('button'); edit.className='small'; edit.textContent='Editar'; edit.addEventListener('click',()=>{
-          const val = prompt('Editar tarea', item.text);
-          if(val!==null){ arr[i].text = val.trim(); setTasksFor(ymd, arr); renderCalendar(); renderTasksList(ymd); }
-        }); row.appendChild(edit);
+        const edit=document.createElement('button');
+        edit.className='small';
+        edit.textContent='Editar';
+        edit.addEventListener('click',()=>{
+          const val=prompt('Editar tarea',item.text);
+          if(val!==null){
+            arr[i].text=val.trim();
+            setTasksFor(ymd,arr);
+            renderCalendar();
+            renderTasksList(ymd);
+          }
+        });
+        row.appendChild(edit);
 
-        const del = document.createElement('button'); del.className='small'; del.textContent='Borrar'; del.addEventListener('click',()=>{
-          if(confirm('Borrar esta tarea?')){ arr.splice(i,1); setTasksFor(ymd, arr); renderCalendar(); renderTasksList(ymd); }
-        }); row.appendChild(del);
-
+        const del=document.createElement('button');
+        del.className='small';
+        del.textContent='Borrar';
+        del.addEventListener('click',()=>{
+          if(confirm('Borrar esta tarea?')){
+            arr.splice(i,1);
+            setTasksFor(ymd,arr);
+            renderCalendar();
+            renderTasksList(ymd);
+          }
+        });
+        row.appendChild(del);
         tasksContainer.appendChild(row);
       }
     }
 
-    document.getElementById('addTaskBtn').addEventListener('click', ()=>{
-      const txt = taskInput.value.trim(); if(!txt) return; if(!selectedDate){ alert('Selecciona un día primero'); return; }
-      const arr = tasksFor(selectedDate);
-      arr.push({text:txt, done:false}); setTasksFor(selectedDate, arr);
-      taskInput.value=''; renderCalendar(); renderTasksList(selectedDate);
+    document.getElementById('addTaskBtn').addEventListener('click',()=>{
+      const txt=taskInput.value.trim();
+      if(!txt) return;
+      if(!selectedDate){ alert('Selecciona un día primero'); return; }
+      const arr=tasksFor(selectedDate);
+      arr.push({text:txt,done:false});
+      setTasksFor(selectedDate,arr);
+      taskInput.value='';
+      renderCalendar();
+      renderTasksList(selectedDate);
     });
     taskInput.addEventListener('keydown',(e)=>{ if(e.key==='Enter') document.getElementById('addTaskBtn').click(); });
 
-    document.getElementById('exportBtn').addEventListener('click', ()=>{
-      const data = localStorage.getItem(STORAGE_KEY) || '{}';
-      const blob = new Blob([data], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href=url; a.download = 'calendario-tareas.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    });
-    document.getElementById('importBtn').addEventListener('click', ()=>{
-      const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.addEventListener('change',()=>{
-        const f = inp.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = ()=>{
-          try{ const obj = JSON.parse(reader.result); localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); renderCalendar(); if(selectedDate) renderTasksList(selectedDate); alert('Importado con éxito'); }catch(e){alert('Archivo inválido');}
-        }; reader.readAsText(f);
-      }); inp.click();
+    document.getElementById('exportBtn').addEventListener('click',()=>{
+      const data=localStorage.getItem(STORAGE_KEY)||'{}';
+      const blob=new Blob([data],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download='calendario-tareas.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     });
 
-    document.getElementById('clearDayBtn').addEventListener('click', ()=>{
+    document.getElementById('importBtn').addEventListener('click',()=>{
+      const inp=document.createElement('input');
+      inp.type='file';
+      inp.accept='application/json';
+      inp.addEventListener('change',()=>{
+        const f=inp.files[0];
+        if(!f) return;
+        const reader=new FileReader();
+        reader.onload=()=>{
+          try{
+            const obj=JSON.parse(reader.result);
+            localStorage.setItem(STORAGE_KEY,JSON.stringify(obj));
+            renderCalendar();
+            if(selectedDate) renderTasksList(selectedDate);
+            alert('Importado con éxito');
+          }catch(e){alert('Archivo inválido');}
+        };
+        reader.readAsText(f);
+      });
+      inp.click();
+    });
+
+    document.getElementById('clearDayBtn').addEventListener('click',()=>{
       if(!selectedDate){ alert('Selecciona un día primero'); return; }
-      if(confirm('Borrar todas las tareas de ' + selectedDate + '?')){ setTasksFor(selectedDate, []); renderCalendar(); renderTasksList(selectedDate); }
+      if(confirm('Borrar todas las tareas de '+selectedDate+'?')){
+        setTasksFor(selectedDate,[]);
+        renderCalendar();
+        renderTasksList(selectedDate);
+      }
     });
 
-    document.getElementById('prevBtn').addEventListener('click', ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1,1); renderCalendar(); });
-    document.getElementById('nextBtn').addEventListener('click', ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1,1); renderCalendar(); });
+    document.getElementById('prevBtn').addEventListener('click',()=>{
+      viewDate=new Date(viewDate.getFullYear(),viewDate.getMonth()-1,1);
+      renderCalendar();
+    });
+    document.getElementById('nextBtn').addEventListener('click',()=>{
+      viewDate=new Date(viewDate.getFullYear(),viewDate.getMonth()+1,1);
+      renderCalendar();
+    });
 
     renderWeekdays(); renderCalendar();
   </script>
