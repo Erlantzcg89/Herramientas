@@ -80,6 +80,7 @@
         justify-content: center;
         margin-bottom: 10px;
         gap: 10px;
+        flex-wrap: wrap;
     }
 
     .buttons button {
@@ -91,6 +92,7 @@
     }
 
     .bold-btn { background-color: #333; color: #fff; }
+    .underline-btn { background-color: #87CEFA; color: #000; }
     .yellow-btn { background-color: yellow; color: #333; }
     .white-btn { background-color: white; color: #333; border: 1px solid #ccc; }
     .download-btn { background-color: var(--rojo); color: white; }
@@ -118,10 +120,11 @@
     <div class="tab" data-tab="5">Tema 5</div>
 </div>
 
-<!-- Contenido dinámico con contenteditable -->
+<!-- Contenido editable -->
 <div class="content active" id="content-1">
     <div class="buttons">
         <button class="bold-btn">Negrita</button>
+        <button class="underline-btn">Subrayar</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
         <button class="download-btn">Descargar Apuntes Tema 1</button>
@@ -132,6 +135,7 @@
 <div class="content" id="content-2">
     <div class="buttons">
         <button class="bold-btn">Negrita</button>
+        <button class="underline-btn">Subrayar</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
         <button class="download-btn">Descargar Apuntes Tema 2</button>
@@ -142,6 +146,7 @@
 <div class="content" id="content-3">
     <div class="buttons">
         <button class="bold-btn">Negrita</button>
+        <button class="underline-btn">Subrayar</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
         <button class="download-btn">Descargar Apuntes Tema 3</button>
@@ -152,6 +157,7 @@
 <div class="content" id="content-4">
     <div class="buttons">
         <button class="bold-btn">Negrita</button>
+        <button class="underline-btn">Subrayar</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
         <button class="download-btn">Descargar Apuntes Tema 4</button>
@@ -162,6 +168,7 @@
 <div class="content" id="content-5">
     <div class="buttons">
         <button class="bold-btn">Negrita</button>
+        <button class="underline-btn">Subrayar</button>
         <button class="yellow-btn">Resaltar Amarillo</button>
         <button class="white-btn">Deshacer Resaltado</button>
         <button class="download-btn">Descargar Apuntes Tema 5</button>
@@ -197,27 +204,25 @@ editables.forEach(edit => {
     });
 });
 
-// Botones de estilo solo sobre selección
+// Botones de formato
 const allButtons = document.querySelectorAll('.buttons button');
 allButtons.forEach(button => {
     button.addEventListener('click', e => {
         const contentDiv = e.target.closest('.content');
         const editable = contentDiv.querySelector('.editable');
-
         editable.focus();
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
-        const range = selection.getRangeAt(0);
 
         if (button.classList.contains('bold-btn')) {
             document.execCommand('bold', false, null);
+        } else if (button.classList.contains('underline-btn')) {
+            document.execCommand('underline', false, null);
         } else if (button.classList.contains('yellow-btn')) {
             document.execCommand('backColor', false, 'yellow');
         } else if (button.classList.contains('white-btn')) {
             document.execCommand('backColor', false, 'white');
         }
 
-        // Guardar contenido actualizado
+        // Guardar después de aplicar estilo
         const tabId = editable.dataset.tab;
         localStorage.setItem('apunte-' + tabId, editable.innerHTML);
     });
@@ -225,18 +230,15 @@ allButtons.forEach(button => {
 
 // Descargar contenido
 const downloadButtons = document.querySelectorAll('.download-btn');
-
 downloadButtons.forEach(btn => {
     btn.addEventListener('click', e => {
         const contentDiv = e.target.closest('.content').querySelector('.editable');
         const tabId = contentDiv.dataset.tab;
         const contenido = contentDiv.innerHTML;
 
-        // Crear un blob con el contenido
         const blob = new Blob([contenido], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
 
-        // Crear enlace temporal y hacer clic para descargar
         const a = document.createElement('a');
         a.href = url;
         a.download = `apuntes_tema_${tabId}.html`;
