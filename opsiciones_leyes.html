@@ -204,6 +204,28 @@ editables.forEach(edit => {
     });
 });
 
+// Permitir tabulaciones dentro del contenteditable
+editables.forEach(edit => {
+    edit.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault(); // Evita que cambie el foco
+
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            const tabNode = document.createTextNode('\u00A0\u00A0\u00A0\u00A0'); // 4 espacios (simula tab)
+            
+            range.insertNode(tabNode);
+
+            // Mover el cursor después del tab
+            range.setStartAfter(tabNode);
+            range.setEndAfter(tabNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    });
+});
+
+
 // Botones de formato
 const allButtons = document.querySelectorAll('.buttons button');
 allButtons.forEach(button => {
