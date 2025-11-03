@@ -17,6 +17,7 @@
   <button id="drawBtn">Dibujar</button>
   <button id="textBtn">Texto</button>
   <button id="moveBtn">Mover</button>
+  <button id="deleteBtn">Eliminar</button>
   <input type="color" id="colorPicker" value="#000000">
   <input type="number" id="sizePicker" value="5" min="1" max="50">
   <button id="clearBtn">Limpiar</button>
@@ -39,15 +40,16 @@ let selectedElement = null;
 document.getElementById('drawBtn').onclick = () => mode = 'draw';
 document.getElementById('textBtn').onclick = () => mode = 'text';
 document.getElementById('moveBtn').onclick = () => mode = 'move';
+document.getElementById('deleteBtn').onclick = () => mode = 'delete';
 document.getElementById('clearBtn').onclick = () => { elements = []; saveElements(); drawAll(); };
 document.getElementById('saveBtn').onclick = downloadImage;
 
-// Draw functions
+// Eventos del canvas
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
     startX = e.clientX - rect.left;
     startY = e.clientY - rect.top;
-    
+
     if(mode === 'draw'){
         drawing = true;
         elements.push({ type: 'line', color: colorPicker.value, size: sizePicker.value, points: [{x: startX, y: startY}] });
@@ -59,7 +61,7 @@ canvas.addEventListener('mousedown', (e) => {
             saveElements();
             drawAll();
         }
-    } else if(mode === 'move'){
+    } else if(mode === 'move' || mode === 'delete'){
         selectedElement = elements.find(el => {
             if(el.type === 'text'){
                 ctx.font = `${el.size}px Arial`;
@@ -67,7 +69,6 @@ canvas.addEventListener('mousedown', (e) => {
                 const height = el.size;
                 return startX >= el.x && startX <= el.x + width && startY >= el.y - height && startY <= el.y;
             } else if(el.type === 'line'){
-                // Simple bounding box for lines
                 const xs = el.points.map(p => p.x);
                 const ys = el.points.map(p => p.y);
                 return startX >= Math.min(...xs) - 5 && startX <= Math.max(...xs) + 5 &&
@@ -75,6 +76,14 @@ canvas.addEventListener('mousedown', (e) => {
             }
             return false;
         });
+
+        // 🗑️ Si estamos en modo eliminar y se selecciona algo, se borra
+        if(mode === 'delete' && selectedElement){
+            elements = elements.filter(el => el !== selectedElement);
+            selectedElement = null;
+            saveElements();
+            drawAll();
+        }
     }
 });
 
@@ -108,7 +117,7 @@ canvas.addEventListener('mouseup', () => {
     saveElements();
 });
 
-// Drawing function
+// Función para dibujar todo
 function drawAll(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     elements.forEach(el => {
@@ -129,12 +138,12 @@ function drawAll(){
     });
 }
 
-// Save/load
+// Guardar y cargar
 function saveElements(){
     localStorage.setItem('pizarraElements', JSON.stringify(elements));
 }
 
-// Download
+// Descargar imagen
 function downloadImage(){
     const link = document.createElement('a');
     link.download = 'pizarra.png';
@@ -142,7 +151,7 @@ function downloadImage(){
     link.click();
 }
 
-// Initial draw
+// Dibujar al iniciar
 drawAll();
 </script>
 
