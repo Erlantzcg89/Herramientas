@@ -6,9 +6,9 @@
 <title>Pizarra</title>
 <style>
   body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
-  #toolbar { margin: 10px; }
+  #toolbar { margin: 10px; display: flex; flex-wrap: wrap; justify-content: center; }
   canvas { border: 1px solid #000; touch-action: none; }
-  button, select, input { margin-right: 5px; }
+  button, select, input { margin: 3px; }
 </style>
 </head>
 <body>
@@ -20,6 +20,8 @@
   <button id="deleteBtn">Eliminar</button>
   <input type="color" id="colorPicker" value="#000000">
   <input type="number" id="sizePicker" value="5" min="1" max="50">
+  <button id="undoBtn">Deshacer</button>
+  <button id="redoBtn">Rehacer</button>
   <button id="clearBtn">Limpiar</button>
   <button id="saveBtn">Descargar</button>
 </div>
@@ -34,56 +36,84 @@ let mode = 'draw';
 let drawing = false;
 let startX, startY;
 let elements = JSON.parse(localStorage.getItem('pizarraElements')) || [];
-let selectedElement = null;
+let selectedElements = [];
+let selectionRect = null;
+
+// --- Historial para deshacer/rehacer ---
+let undoStack = [];
+let redoStack = [];
+
+// Guardar estado en el historial
+function saveState() {
+    undoStack.push(JSON.stringify(elements));
+    redoStack = []; // limpiar rehacer después de un cambio nuevo
+}
+
+// Deshacer
+function undo() {
+    if (undoStack.length > 0) {
+        redoStack.push(JSON.stringify(elements));
+        elements = JSON.parse(undoStack.pop());
+        saveElements(false);
+        drawAll();
+    }
+}
+
+// Rehacer
+function redo() {
+    if (redoStack.length > 0) {
+        undoStack.push(JSON.stringify(elements));
+        elements = JSON.parse(redoStack.pop());
+        saveElements(false);
+        drawAll();
+    }
+}
+
+// Asignar eventos a botones
+document.getElementById('undoBtn').onclick = undo;
+document.getElementById('redoBtn').onclick = redo;
+
+// Atajos de teclado (Ctrl+Z / Ctrl+Y)
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undo();
+    } else if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+    }
+});
 
 // Toolbar buttons
 document.getElementById('drawBtn').onclick = () => mode = 'draw';
 document.getElementById('textBtn').onclick = () => mode = 'text';
 document.getElementById('moveBtn').onclick = () => mode = 'move';
 document.getElementById('deleteBtn').onclick = () => mode = 'delete';
-document.getElementById('clearBtn').onclick = () => { elements = []; saveElements(); drawAll(); };
+document.getElementById('clearBtn').onclick = () => { saveState(); elements = []; saveElements(); drawAll(); };
 document.getElementById('saveBtn').onclick = downloadImage;
 
-// Eventos del canvas
+// Canvas events
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
     startX = e.clientX - rect.left;
     startY = e.clientY - rect.top;
 
-    if(mode === 'draw'){
+    if (mode === 'draw') {
         drawing = true;
+        saveState();
         elements.push({ type: 'line', color: colorPicker.value, size: sizePicker.value, points: [{x: startX, y: startY}] });
-    } else if(mode === 'text'){
+    } else if (mode === 'text') {
         const text = prompt('Ingrese el texto:');
-        if(text){
-            const newText = { type: 'text', text, x: startX, y: startY, color: colorPicker.value, size: sizePicker.value*2 };
+        if (text) {
+            saveState();
+            const newText = { type: 'text', text, x: startX, y: startY, color: colorPicker.value, size: sizePicker.value * 2 };
             elements.push(newText);
             saveElements();
             drawAll();
         }
-    } else if(mode === 'move' || mode === 'delete'){
-        selectedElement = elements.find(el => {
-            if(el.type === 'text'){
-                ctx.font = `${el.size}px Arial`;
-                const width = ctx.measureText(el.text).width;
-                const height = el.size;
-                return startX >= el.x && startX <= el.x + width && startY >= el.y - height && startY <= el.y;
-            } else if(el.type === 'line'){
-                const xs = el.points.map(p => p.x);
-                const ys = el.points.map(p => p.y);
-                return startX >= Math.min(...xs) - 5 && startX <= Math.max(...xs) + 5 &&
-                       startY >= Math.min(...ys) - 5 && startY <= Math.max(...ys) + 5;
-            }
-            return false;
-        });
-
-        // 🗑️ Si estamos en modo eliminar y se selecciona algo, se borra
-        if(mode === 'delete' && selectedElement){
-            elements = elements.filter(el => el !== selectedElement);
-            selectedElement = null;
-            saveElements();
-            drawAll();
-        }
+    } else if (mode === 'move' || mode === 'delete') {
+        selectionRect = { x: startX, y: startY, w: 0, h: 0 };
+        selectedElements = [];
     }
 });
 
@@ -92,66 +122,161 @@ canvas.addEventListener('mousemove', (e) => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    if(drawing && mode === 'draw'){
-        const line = elements[elements.length-1];
-        line.points.push({x: mouseX, y: mouseY});
+    if (drawing && mode === 'draw') {
+        const line = elements[elements.length - 1];
+        line.points.push({ x: mouseX, y: mouseY });
         drawAll();
-    } else if(selectedElement && mode === 'move'){
-        const dx = mouseX - startX;
-        const dy = mouseY - startY;
-        startX = mouseX;
-        startY = mouseY;
-        if(selectedElement.type === 'text'){
-            selectedElement.x += dx;
-            selectedElement.y += dy;
-        } else if(selectedElement.type === 'line'){
-            selectedElement.points.forEach(p => { p.x += dx; p.y += dy; });
-        }
+    } else if (selectionRect && (mode === 'move' || mode === 'delete')) {
+        selectionRect.w = mouseX - startX;
+        selectionRect.h = mouseY - startY;
         drawAll();
+        drawSelectionRect();
     }
 });
 
-canvas.addEventListener('mouseup', () => {
+canvas.addEventListener('mouseup', (e) => {
     drawing = false;
-    selectedElement = null;
+
+    if (selectionRect && (mode === 'move' || mode === 'delete')) {
+        selectedElements = elements.filter(el => elementInRect(el, selectionRect));
+
+        if (mode === 'delete' && selectedElements.length > 0) {
+            saveState();
+            elements = elements.filter(el => !selectedElements.includes(el));
+            selectedElements = [];
+            saveElements();
+        }
+
+        drawAll();
+        if (mode === 'move' && selectedElements.length > 0) {
+            saveState();
+            enableGroupMove(e);
+        }
+    }
+
+    selectionRect = null;
     saveElements();
 });
 
-// Función para dibujar todo
-function drawAll(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+// Mover varios elementos
+function enableGroupMove(e) {
+    let lastX = e.offsetX;
+    let lastY = e.offsetY;
+
+    function onMouseMove(ev) {
+        const dx = ev.offsetX - lastX;
+        const dy = ev.offsetY - lastY;
+        lastX = ev.offsetX;
+        lastY = ev.offsetY;
+
+        selectedElements.forEach(el => {
+            if (el.type === 'text') {
+                el.x += dx;
+                el.y += dy;
+            } else if (el.type === 'line') {
+                el.points.forEach(p => { p.x += dx; p.y += dy; });
+            }
+        });
+        drawAll();
+    }
+
+    function onMouseUp() {
+        canvas.removeEventListener('mousemove', onMouseMove);
+        canvas.removeEventListener('mouseup', onMouseUp);
+        selectedElements = [];
+        saveElements();
+    }
+
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mouseup', onMouseUp);
+}
+
+// Determinar si un elemento está dentro del área de selección
+function elementInRect(el, rect) {
+    const x1 = Math.min(rect.x, rect.x + rect.w);
+    const y1 = Math.min(rect.y, rect.y + rect.h);
+    const x2 = Math.max(rect.x, rect.x + rect.w);
+    const y2 = Math.max(rect.y, rect.y + rect.h);
+
+    if (el.type === 'text') {
+        ctx.font = `${el.size}px Arial`;
+        const width = ctx.measureText(el.text).width;
+        const height = el.size;
+        return el.x >= x1 && el.x <= x2 && el.y - height >= y1 && el.y <= y2;
+    } else if (el.type === 'line') {
+        const xs = el.points.map(p => p.x);
+        const ys = el.points.map(p => p.y);
+        return Math.max(...xs) >= x1 && Math.min(...xs) <= x2 &&
+               Math.max(...ys) >= y1 && Math.min(...ys) <= y2;
+    }
+    return false;
+}
+
+// Dibuja todo
+function drawAll() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     elements.forEach(el => {
-        if(el.type === 'line'){
+        if (el.type === 'line') {
             ctx.strokeStyle = el.color;
             ctx.lineWidth = el.size;
             ctx.beginPath();
             ctx.moveTo(el.points[0].x, el.points[0].y);
-            for(let i=1;i<el.points.length;i++){
+            for (let i = 1; i < el.points.length; i++) {
                 ctx.lineTo(el.points[i].x, el.points[i].y);
             }
             ctx.stroke();
-        } else if(el.type === 'text'){
+        } else if (el.type === 'text') {
             ctx.fillStyle = el.color;
             ctx.font = `${el.size}px Arial`;
             ctx.fillText(el.text, el.x, el.y);
         }
     });
+
+    // Dibujar elementos seleccionados
+    selectedElements.forEach(el => {
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 1;
+        if (el.type === 'text') {
+            ctx.font = `${el.size}px Arial`;
+            const width = ctx.measureText(el.text).width;
+            const height = el.size;
+            ctx.strokeRect(el.x, el.y - height, width, height);
+        } else if (el.type === 'line') {
+            const xs = el.points.map(p => p.x);
+            const ys = el.points.map(p => p.y);
+            const minX = Math.min(...xs);
+            const minY = Math.min(...ys);
+            const maxX = Math.max(...xs);
+            const maxY = Math.max(...ys);
+            ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+        }
+    });
 }
 
-// Guardar y cargar
-function saveElements(){
+// Dibuja el rectángulo de selección
+function drawSelectionRect() {
+    if (!selectionRect) return;
+    ctx.strokeStyle = 'rgba(0,0,255,0.8)';
+    ctx.setLineDash([5, 5]);
+    ctx.strokeRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+    ctx.setLineDash([]);
+}
+
+// Guardar en localStorage
+function saveElements(recordHistory = true) {
+    if (recordHistory) saveState();
     localStorage.setItem('pizarraElements', JSON.stringify(elements));
 }
 
 // Descargar imagen
-function downloadImage(){
+function downloadImage() {
     const link = document.createElement('a');
     link.download = 'pizarra.png';
     link.href = canvas.toDataURL();
     link.click();
 }
 
-// Dibujar al iniciar
+// Inicial
 drawAll();
 </script>
 
