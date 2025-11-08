@@ -38,13 +38,16 @@
       position: relative;
       z-index: 1;
       width: 100%;
-      max-width: 720px;
+      max-width: 1100px;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 20px;
       box-shadow: var(--shadow);
       padding: 28px;
       backdrop-filter: blur(6px);
       border: 1px solid rgba(255, 255, 255, 0.1);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
     }
 
     header {
@@ -62,6 +65,18 @@
     .title .name {
       font-size: 22px;
       font-weight: 600;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .column h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--accent);
     }
 
     .controls {
@@ -151,61 +166,102 @@
       text-align: center;
       color: rgba(207, 238, 252, 0.6);
     }
+
+    @media (max-width: 800px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="snow" aria-hidden="true"></div>
   <main class="app">
-    <header>
-      <div class="logo"><h1>❄️</h1></div>
-      <div class="title">
-        <div class="name">Winter Arc</div>
-        <div class="tag">Tu lista invernal</div>
-      </div>
-    </header>
+    <!-- Columna 1: Lista normal -->
+    <div class="column">
+      <header>
+        <div class="logo"><h1>❄️</h1></div>
+        <div class="title">
+          <div class="name">Winter Arc</div>
+          <div class="tag">Tu lista invernal</div>
+        </div>
+      </header>
 
-    <section class="controls">
-      <input class="new-task" id="newTaskInput" placeholder="Añade una tarea..." />
-      <button class="add" id="addBtn">Añadir</button>
-    </section>
+      <section class="controls">
+        <input class="new-task" id="newTaskInput" placeholder="Añade una tarea..." />
+        <button class="add" id="addBtn">Añadir</button>
+      </section>
 
-    <section class="tasks" id="tasksList"></section>
+      <section class="tasks" id="tasksList"></section>
+    </div>
+
+    <!-- Columna 2: Objetivos principales -->
+    <div class="column">
+
+      <header>
+        <div class="logo"><h1>🎯</h1></div>
+        <div class="title">
+          <div class="name">Objetivos principales</div>
+          <div class="tag">Metas a medio plazo</div>
+        </div>
+      </header>
+
+      <section class="controls">
+        <input class="new-task" id="newGoalInput" placeholder="Añade un objetivo..." />
+        <button class="add" id="addGoalBtn">Añadir</button>
+      </section>
+
+      <section class="tasks" id="goalsList"></section>
+    </div>
   </main>
 
   <template id="taskTpl">
     <div class="task" draggable="true">
       <div class="content"></div>
-      <!-- Cambié el icono de basura por una X y añadí aria-label/type -->
       <button class="icon delBtn" type="button" aria-label="Eliminar tarea">✖</button>
     </div>
   </template>
 
   <script>
-  const STORAGE_KEY = 'winter-arc-list';
+  // ---------- Lista de tareas ----------
+  const STORAGE_KEY_TASKS = 'winter-arc-list';
+  const STORAGE_KEY_GOALS = 'winter-arc-goals';
+
   const newTaskInput = document.getElementById('newTaskInput');
   const addBtn = document.getElementById('addBtn');
   const tasksList = document.getElementById('tasksList');
 
-  let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const newGoalInput = document.getElementById('newGoalInput');
+  const addGoalBtn = document.getElementById('addGoalBtn');
+  const goalsList = document.getElementById('goalsList');
+
+  let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY_TASKS) || '[]');
+  let goals = JSON.parse(localStorage.getItem(STORAGE_KEY_GOALS) || '[]');
 
   function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+    localStorage.setItem(STORAGE_KEY_GOALS, JSON.stringify(goals));
   }
 
   function render() {
-    tasksList.innerHTML = '';
-    if (tasks.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'empty';
-      empty.textContent = 'Sin tareas todavía — añade la primera.';
-      tasksList.appendChild(empty);
-    } else {
-      tasks.forEach((t, i) => tasksList.appendChild(createTaskNode(t, i)));
-    }
+    renderList(tasksList, tasks, tasks, STORAGE_KEY_TASKS);
+    renderList(goalsList, goals, goals, STORAGE_KEY_GOALS);
     save();
   }
 
-  function createTaskNode(text, index) {
+  function renderList(container, arr, ref, storageKey) {
+    container.innerHTML = '';
+    if (arr.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Sin elementos todavía — añade el primero.';
+      container.appendChild(empty);
+    } else {
+      arr.forEach((t, i) => container.appendChild(createTaskNode(t, i, ref, container, storageKey)));
+    }
+  }
+
+  function createTaskNode(text, index, refArray, container, storageKey) {
     const tpl = document.getElementById('taskTpl');
     const node = tpl.content.firstElementChild.cloneNode(true);
     const content = node.querySelector('.content');
@@ -213,32 +269,23 @@
 
     content.textContent = text;
 
-    // --- Eliminar tarea ---
-    // ahora calculamos la posición actual del nodo en la lista para evitar
-    // inconsistencias después de reordenar
     delBtn.addEventListener('click', () => {
-      const tasksNodes = Array.from(tasksList.querySelectorAll('.task'));
-      const idx = tasksNodes.indexOf(node);
+      const nodes = Array.from(container.querySelectorAll('.task'));
+      const idx = nodes.indexOf(node);
       if (idx > -1) {
-        tasks.splice(idx, 1);
+        refArray.splice(idx, 1);
         render();
       }
     });
 
-    // --- Drag and Drop ---
     node.draggable = true;
-    node.dataset.index = index;
 
     node.addEventListener('dragstart', e => {
       e.dataTransfer.effectAllowed = 'move';
-      // guardamos el índice original por compatibilidad
-      e.dataTransfer.setData('text/plain', index);
       node.classList.add('dragging');
     });
 
-    node.addEventListener('dragend', () => {
-      node.classList.remove('dragging');
-    });
+    node.addEventListener('dragend', () => node.classList.remove('dragging'));
 
     node.addEventListener('dragover', e => {
       e.preventDefault();
@@ -247,29 +294,26 @@
       const rect = node.getBoundingClientRect();
       const offset = e.clientY - rect.top;
       const mid = rect.height / 2;
-      if (offset > mid) {
-        node.after(dragging);
-      } else {
-        node.before(dragging);
-      }
+      if (offset > mid) node.after(dragging);
+      else node.before(dragging);
     });
 
     node.addEventListener('drop', e => {
       e.preventDefault();
-      reorderTasks();
+      reorder(container, refArray);
     });
 
     return node;
   }
 
-  function reorderTasks() {
-    // reconstruimos el array `tasks` según el orden actual del DOM
-    const newOrder = Array.from(tasksList.children)
+  function reorder(container, refArray) {
+    const newOrder = Array.from(container.children)
       .map(el => el.querySelector('.content')?.textContent)
       .filter(Boolean);
-    tasks = newOrder;
+    refArray.length = 0;
+    refArray.push(...newOrder);
     save();
-    render(); // re-render para restaurar listeners y dataset correctos
+    render();
   }
 
   function addTask() {
@@ -280,14 +324,23 @@
     render();
   }
 
+  function addGoal() {
+    const text = newGoalInput.value.trim();
+    if (!text) return;
+    goals.push(text);
+    newGoalInput.value = '';
+    render();
+  }
+
   addBtn.addEventListener('click', addTask);
-  newTaskInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') addTask();
-  });
+  newTaskInput.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+
+  addGoalBtn.addEventListener('click', addGoal);
+  newGoalInput.addEventListener('keydown', e => { if (e.key === 'Enter') addGoal(); });
 
   render();
 
-  // --- Efecto de nieve ---
+  // --- Nieve ---
   (function makeSnow() {
     const container = document.querySelector('.snow');
     const count = 30;
@@ -307,7 +360,6 @@
     style.textContent = `@keyframes fall {0%{transform:translateY(-10vh);}100%{transform:translateY(110vh);}}`;
     document.head.appendChild(style);
   })();
-</script>
-
+  </script>
 </body>
 </html>
