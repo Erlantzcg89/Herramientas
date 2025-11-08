@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Winter Arc</title>
+  <style>
+    :root {
+      --bg1: #06243a;
+      --bg2: #0f4b68;
+      --card: rgba(255, 255, 255, 0.06);
+      --accent: #9ad3ff;
+      --muted: #cfeefc;
+      --shadow: 0 6px 18px rgba(2, 10, 23, 0.6);
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: linear-gradient(180deg, var(--bg1), var(--bg2));
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 36px;
+      box-sizing: border-box;
+    }
+
+    .snow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 720px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .logo h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .title .name {
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    input.new-task {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: none;
+      background: var(--card);
+      color: var(--muted);
+      font-size: 15px;
+      outline: none;
+    }
+
+    button.add {
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(180deg, var(--accent), #74c8ff);
+      color: #042533;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .tasks {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 16px;
+      border-radius: 12px;
+      min-height: 220px;
+    }
+
+    .task {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+
+    .task.dragging {
+      opacity: 0.85;
+      transform: scale(1.01);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    }
+
+    .task .content {
+      flex: 1;
+      padding-right: 12px;
+      word-break: break-word;
+    }
+
+    .task button.icon {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      width: 36px;
+      height: 36px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 8px;
+      transition: background .12s ease, color .12s ease;
+    }
+
+    .task button.icon:focus {
+      outline: 2px solid rgba(154, 211, 255, 0.35);
+      outline-offset: 2px;
+    }
+
+    .task button.icon:hover {
+      background: rgba(255,255,255,0.06);
+      color: #ffb3b3;
+    }
+
+    .empty {
+      padding: 20px;
+      text-align: center;
+      color: rgba(207, 238, 252, 0.6);
+    }
+  </style>
+</head>
+<body>
+  <div class="snow" aria-hidden="true"></div>
+  <main class="app">
+    <header>
+      <div class="logo"><h1>❄️</h1></div>
+      <div class="title">
+        <div class="name">Winter Arc</div>
+        <div class="tag">Tu lista invernal</div>
+      </div>
+    </header>
+
+    <section class="controls">
+      <input class="new-task" id="newTaskInput" placeholder="Añade una tarea..." />
+      <button class="add" id="addBtn">Añadir</button>
+    </section>
+
+    <section class="tasks" id="tasksList"></section>
+  </main>
+
+  <template id="taskTpl">
+    <div class="task" draggable="true">
+      <div class="content"></div>
+      <!-- Cambié el icono de basura por una X y añadí aria-label/type -->
+      <button class="icon delBtn" type="button" aria-label="Eliminar tarea">✖</button>
+    </div>
+  </template>
+
+  <script>
+  const STORAGE_KEY = 'winter-arc-list';
+  const newTaskInput = document.getElementById('newTaskInput');
+  const addBtn = document.getElementById('addBtn');
+  const tasksList = document.getElementById('tasksList');
+
+  let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+
+  function render() {
+    tasksList.innerHTML = '';
+    if (tasks.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Sin tareas todavía — añade la primera.';
+      tasksList.appendChild(empty);
+    } else {
+      tasks.forEach((t, i) => tasksList.appendChild(createTaskNode(t, i)));
+    }
+    save();
+  }
+
+  function createTaskNode(text, index) {
+    const tpl = document.getElementById('taskTpl');
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    const content = node.querySelector('.content');
+    const delBtn = node.querySelector('.delBtn');
+
+    content.textContent = text;
+
+    // --- Eliminar tarea ---
+    // ahora calculamos la posición actual del nodo en la lista para evitar
+    // inconsistencias después de reordenar
+    delBtn.addEventListener('click', () => {
+      const tasksNodes = Array.from(tasksList.querySelectorAll('.task'));
+      const idx = tasksNodes.indexOf(node);
+      if (idx > -1) {
+        tasks.splice(idx, 1);
+        render();
+      }
+    });
+
+    // --- Drag and Drop ---
+    node.draggable = true;
+    node.dataset.index = index;
+
+    node.addEventListener('dragstart', e => {
+      e.dataTransfer.effectAllowed = 'move';
+      // guardamos el índice original por compatibilidad
+      e.dataTransfer.setData('text/plain', index);
+      node.classList.add('dragging');
+    });
+
+    node.addEventListener('dragend', () => {
+      node.classList.remove('dragging');
+    });
+
+    node.addEventListener('dragover', e => {
+      e.preventDefault();
+      const dragging = document.querySelector('.dragging');
+      if (!dragging || dragging === node) return;
+      const rect = node.getBoundingClientRect();
+      const offset = e.clientY - rect.top;
+      const mid = rect.height / 2;
+      if (offset > mid) {
+        node.after(dragging);
+      } else {
+        node.before(dragging);
+      }
+    });
+
+    node.addEventListener('drop', e => {
+      e.preventDefault();
+      reorderTasks();
+    });
+
+    return node;
+  }
+
+  function reorderTasks() {
+    // reconstruimos el array `tasks` según el orden actual del DOM
+    const newOrder = Array.from(tasksList.children)
+      .map(el => el.querySelector('.content')?.textContent)
+      .filter(Boolean);
+    tasks = newOrder;
+    save();
+    render(); // re-render para restaurar listeners y dataset correctos
+  }
+
+  function addTask() {
+    const text = newTaskInput.value.trim();
+    if (!text) return;
+    tasks.push(text);
+    newTaskInput.value = '';
+    render();
+  }
+
+  addBtn.addEventListener('click', addTask);
+  newTaskInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask();
+  });
+
+  render();
+
+  // --- Efecto de nieve ---
+  (function makeSnow() {
+    const container = document.querySelector('.snow');
+    const count = 30;
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('i');
+      el.style.position = 'absolute';
+      el.style.width = el.style.height = 4 + Math.random() * 8 + 'px';
+      el.style.left = Math.random() * 100 + '%';
+      el.style.top = Math.random() * 100 + '%';
+      el.style.opacity = 0.2 + Math.random() * 0.4;
+      el.style.background = 'white';
+      el.style.borderRadius = '50%';
+      el.style.animation = `fall ${5 + Math.random() * 10}s linear infinite`;
+      container.appendChild(el);
+    }
+    const style = document.createElement('style');
+    style.textContent = `@keyframes fall {0%{transform:translateY(-10vh);}100%{transform:translateY(110vh);}}`;
+    document.head.appendChild(style);
+  })();
+</script>
+
+</body>
+</html>
