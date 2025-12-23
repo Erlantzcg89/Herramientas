@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+      color: #fff;
+
+      background-image: url("https://images.unsplash.com/photo-1500463959177-e0869687df26?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+
+    h1 {
+      text-align: center;
+      text-shadow: 2px 2px 4px #000;
+    }
+
+    .panel {
+      background: rgba(0, 0, 0, 0.65);
+      padding: 15px;
+      border-radius: 10px;
+    }
+
+    input {
+      padding: 8px;
+      width: 70%;
+      border-radius: 5px;
+      border: none;
+    }
+
+    button {
+      padding: 6px 10px;
+      margin: 2px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background: #666;
+      color: white;
+    }
+
+    button:hover {
+      background: #888;
+    }
+
+    #listaMovimientos {
+      margin-top: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .movimiento {
+      background: rgba(120, 120, 120, 0.85);
+      padding: 10px;
+      border-radius: 8px;
+      cursor: grab;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .contador {
+      font-weight: bold;
+    }
+
+    .movimiento div {
+      display: flex;
+      gap: 4px;
+    }
+
+    @media (max-width: 600px) {
+      .movimiento {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Registro</h1>
+
+  <div class="panel">
+    <input type="text" id="nuevoMovimiento" placeholder="Nombre del movimiento">
+    <button onclick="agregarMovimiento()">Añadir</button>
+
+    <div id="listaMovimientos"></div>
+  </div>
+
+  <script>
+    let movimientos = [];
+    let dragIndex = null;
+
+    const inputMovimiento = document.getElementById("nuevoMovimiento");
+
+    // 👉 AÑADIR CON ENTER
+    inputMovimiento.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        agregarMovimiento();
+      }
+    });
+
+    function cargarDatos() {
+      const datos = localStorage.getItem("movimientos");
+      if (datos) {
+        movimientos = JSON.parse(datos);
+      }
+      render();
+    }
+
+    function guardarDatos() {
+      localStorage.setItem("movimientos", JSON.stringify(movimientos));
+    }
+
+    function agregarMovimiento() {
+      const nombre = inputMovimiento.value.trim();
+      if (!nombre) return;
+
+      movimientos.push({ nombre, cantidad: 0 });
+      inputMovimiento.value = "";
+      guardarDatos();
+      render();
+    }
+
+    function borrarMovimiento(index) {
+      movimientos.splice(index, 1);
+      guardarDatos();
+      render();
+    }
+
+    function cambiarCantidad(index, cambio) {
+      movimientos[index].cantidad += cambio;
+      if (movimientos[index].cantidad < 0) {
+        movimientos[index].cantidad = 0;
+      }
+      guardarDatos();
+      render();
+    }
+
+    function render() {
+      const contenedor = document.getElementById("listaMovimientos");
+      contenedor.innerHTML = "";
+
+      movimientos.forEach((mov, index) => {
+        const div = document.createElement("div");
+        div.className = "movimiento";
+        div.draggable = true;
+
+        div.ondragstart = () => dragIndex = index;
+        div.ondragover = e => e.preventDefault();
+
+        div.ondrop = () => {
+          const temp = movimientos[dragIndex];
+          movimientos.splice(dragIndex, 1);
+          movimientos.splice(index, 0, temp);
+          guardarDatos();
+          render();
+        };
+
+        div.innerHTML = `
+          <strong>${mov.nombre}</strong>
+          <span>Rep: <span class="contador">${mov.cantidad}</span></span>
+          <span>Total: ${mov.cantidad * 100}</span>
+          <div>
+            <button onclick="cambiarCantidad(${index}, 1)">+</button>
+            <button onclick="cambiarCantidad(${index}, -1)">−</button>
+            <button onclick="borrarMovimiento(${index})">Borrar</button>
+          </div>
+        `;
+
+        contenedor.appendChild(div);
+      });
+    }
+
+    cargarDatos();
+  </script>
+
+</body>
+</html>

@@ -117,7 +117,7 @@
     .task {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 10px;
       padding: 10px 12px;
       margin-bottom: 8px;
       border-radius: 10px;
@@ -133,7 +133,6 @@
 
     .task .content {
       flex: 1;
-      padding-right: 12px;
       word-break: break-word;
     }
 
@@ -149,11 +148,6 @@
       place-items: center;
       border-radius: 8px;
       transition: background .12s ease, color .12s ease;
-    }
-
-    .task button.icon:focus {
-      outline: 2px solid rgba(154, 211, 255, 0.35);
-      outline-offset: 2px;
     }
 
     .task button.icon:hover {
@@ -174,10 +168,12 @@
     }
   </style>
 </head>
+
 <body>
   <div class="snow" aria-hidden="true"></div>
+
   <main class="app">
-    <!-- Columna 1: Lista normal -->
+    <!-- Columna 1 -->
     <div class="column">
       <header>
         <div class="logo"><h1>❄️</h1></div>
@@ -192,12 +188,13 @@
         <button class="add" id="addBtn">Añadir</button>
       </section>
 
+      <button class="add" id="uncheckAllBtn">Desmarcar todas</button>
+
       <section class="tasks" id="tasksList"></section>
     </div>
 
-    <!-- Columna 2: Objetivos principales -->
+    <!-- Columna 2 -->
     <div class="column">
-
       <header>
         <div class="logo"><h1>🎯</h1></div>
         <div class="title">
@@ -215,15 +212,16 @@
     </div>
   </main>
 
+  <!-- Template -->
   <template id="taskTpl">
     <div class="task" draggable="true">
+      <input type="checkbox" class="chk">
       <div class="content"></div>
-      <button class="icon delBtn" type="button" aria-label="Eliminar tarea">✖</button>
+      <button class="icon delBtn" type="button">✖</button>
     </div>
   </template>
 
   <script>
-  // ---------- Lista de tareas ----------
   const STORAGE_KEY_TASKS = 'winter-arc-list';
   const STORAGE_KEY_GOALS = 'winter-arc-goals';
 
@@ -235,6 +233,8 @@
   const addGoalBtn = document.getElementById('addGoalBtn');
   const goalsList = document.getElementById('goalsList');
 
+  const uncheckAllBtn = document.getElementById('uncheckAllBtn');
+
   let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY_TASKS) || '[]');
   let goals = JSON.parse(localStorage.getItem(STORAGE_KEY_GOALS) || '[]');
 
@@ -244,38 +244,45 @@
   }
 
   function render() {
-    renderList(tasksList, tasks, tasks, STORAGE_KEY_TASKS);
-    renderList(goalsList, goals, goals, STORAGE_KEY_GOALS);
+    renderList(tasksList, tasks);
+    renderList(goalsList, goals);
     save();
   }
 
-  function renderList(container, arr, ref, storageKey) {
+  function renderList(container, arr) {
     container.innerHTML = '';
     if (arr.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
       empty.textContent = 'Sin elementos todavía — añade el primero.';
       container.appendChild(empty);
-    } else {
-      arr.forEach((t, i) => container.appendChild(createTaskNode(t, i, ref, container, storageKey)));
+      return;
     }
+
+    arr.forEach((t, i) => {
+      container.appendChild(createTaskNode(t, i, arr, container));
+    });
   }
 
-  function createTaskNode(text, index, refArray, container, storageKey) {
+  function createTaskNode(task, index, refArray, container) {
     const tpl = document.getElementById('taskTpl');
     const node = tpl.content.firstElementChild.cloneNode(true);
+
+    const chk = node.querySelector('.chk');
     const content = node.querySelector('.content');
     const delBtn = node.querySelector('.delBtn');
 
-    content.textContent = text;
+    content.textContent = task.text;
+    chk.checked = task.done;
+
+    chk.addEventListener('change', () => {
+      refArray[index].done = chk.checked;
+      save();
+    });
 
     delBtn.addEventListener('click', () => {
-      const nodes = Array.from(container.querySelectorAll('.task'));
-      const idx = nodes.indexOf(node);
-      if (idx > -1) {
-        refArray.splice(idx, 1);
-        render();
-      }
+      refArray.splice(index, 1);
+      render();
     });
 
     node.draggable = true;
@@ -307,9 +314,11 @@
   }
 
   function reorder(container, refArray) {
-    const newOrder = Array.from(container.children)
-      .map(el => el.querySelector('.content')?.textContent)
-      .filter(Boolean);
+    const newOrder = Array.from(container.children).map(el => ({
+      text: el.querySelector('.content').textContent,
+      done: el.querySelector('.chk').checked
+    }));
+
     refArray.length = 0;
     refArray.push(...newOrder);
     save();
@@ -319,7 +328,7 @@
   function addTask() {
     const text = newTaskInput.value.trim();
     if (!text) return;
-    tasks.push(text);
+    tasks.push({ text, done: false });
     newTaskInput.value = '';
     render();
   }
@@ -327,20 +336,26 @@
   function addGoal() {
     const text = newGoalInput.value.trim();
     if (!text) return;
-    goals.push(text);
+    goals.push({ text, done: false });
     newGoalInput.value = '';
     render();
   }
 
   addBtn.addEventListener('click', addTask);
-  newTaskInput.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+  newTaskInput.addEventListener('keydown', e => e.key === 'Enter' && addTask());
 
   addGoalBtn.addEventListener('click', addGoal);
-  newGoalInput.addEventListener('keydown', e => { if (e.key === 'Enter') addGoal(); });
+  newGoalInput.addEventListener('keydown', e => e.key === 'Enter' && addGoal());
+
+  uncheckAllBtn.addEventListener('click', () => {
+    tasks.forEach(t => t.done = false);
+    goals.forEach(g => g.done = false);
+    render();
+  });
 
   render();
 
-  // --- Nieve ---
+  // Nieve
   (function makeSnow() {
     const container = document.querySelector('.snow');
     const count = 30;
@@ -361,5 +376,6 @@
     document.head.appendChild(style);
   })();
   </script>
+
 </body>
 </html>
